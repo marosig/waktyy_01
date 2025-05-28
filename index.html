@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Wakhty - Optimize your daily routine and track your progress">
-    <title>Wakhty - Daily Routine Optimizer</title>
+    <title>Wakktyy - Daily Routine Optimizer</title>
     <style>
         :root {
             --primary: #6366f1;
@@ -376,7 +376,7 @@
 <body data-theme="dark">
     <div class="container">
         <header class="header">
-            <h1 class="logo">⚡ Wakhty</h1>
+            <h1 class="logo">⚡ Waktyy</h1>
             <div class="theme-selector" role="radiogroup" aria-label="Theme selection">
                 <button class="theme-btn dark active" data-theme="dark" aria-label="Dark theme"></button>
                 <button class="theme-btn light" data-theme="light" aria-label="Light theme"></button>
@@ -744,7 +744,20 @@
                     Persistence.save();
                 }
             },
+            resetSchedule: () => {
+                // console.log('Resetting schedule and reminders');
+                appState.schedule = [];
+                appState.reminders = [];
+                appState.stats.tasksCompletedToday = 0;
+                appState.stats.studyTime = 0;
+                appState.stats.hobbyTime = 0;
+                appState.stats.lastReviewDate = new Date().toDateString();
+                UI.notify('🎉 All tasks completed! Ready to create a new schedule! 🚀');
+                UI.update();
+                Persistence.save();
+            },
             completeTask: (task, index, source = 'schedule') => {
+                // console.log(`Completing task: ${task.title}, source: ${source}, index: ${index}`);
                 const wasCompleted = task.completed;
                 task.completed = true;
                 const isStudy = Utils.isStudyTask(task);
@@ -769,14 +782,24 @@
                     UI.notify(`✅ ${task.title} completed! +10 XP`);
                 }
 
-                if (source === 'schedule') appState.schedule[index] = task;
-                else appState.reminders[index] = task;
+                if (source === 'schedule') {
+                    appState.schedule[index] = task;
+                    // Check if all schedule tasks are completed
+                    if (appState.schedule.length > 0 && appState.schedule.every(t => t.completed)) {
+                        // console.log('All schedule tasks completed, triggering reset');
+                        State.resetSchedule();
+                    }
+                } else {
+                    appState.reminders[index] = task;
+                }
 
                 UI.update();
                 Achievements.update();
                 Persistence.save();
+                // console.log('State after completion:', JSON.parse(JSON.stringify(appState)));
             },
             uncompleteTask: (task, index, source = 'schedule') => {
+                // console.log(`Uncompleting task: ${task.title}, source: ${source}, index: ${index}`);
                 const wasCompleted = task.completed;
                 task.completed = false;
                 const isStudy = Utils.isStudyTask(task);
@@ -957,7 +980,7 @@
                             <span class="timeline-time">🎉</span>
                             <div class="timeline-content">
                                 <div class="timeline-title">All done for today!</div>
-                                <div>Great job completing your schedule! 🌟</div>
+                                <div>Great job! Create a new schedule to keep going! 🚀</div>
                             </div>
                             <span class="timeline-emoji">✅</span>
                         </div>`;
@@ -1233,7 +1256,7 @@
             State.resetDaily();
             UI.update();
             setInterval(Reminders.check, 60000);
-            UI.notify('👋 Welcome to Wakhty!');
+            UI.notify('👋 Welcome to waktyy!');
         };
 
         document.addEventListener('DOMContentLoaded', init);
