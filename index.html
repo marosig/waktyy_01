@@ -410,12 +410,12 @@
                     <div>Tasks Done Today ✅</div>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-number" id="focusScore">0</span>
-                    <div>Focus Score 🎯</div>
+                    <span class="stat-number" id="studyTime">0h</span>
+                    <div>Study Time Today 📚</div>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-number" id="timeSpent">0h</span>
-                    <div>Study Time Today 📚</div>
+                    <span class="stat-number" id="hobbyTime">0h</span>
+                    <div>Hobby Time Today 🎭</div>
                 </div>
             </div>
 
@@ -476,6 +476,10 @@
                         <label for="hobbies">Hobbies & Personal Goals</label>
                         <textarea id="hobbies" rows="3" placeholder="Reading, music, art..."></textarea>
                     </div>
+                    <div class="input-group">
+                        <label for="hobbyDuration">Hobby Duration (minutes, min 60)</label>
+                        <input type="number" id="hobbyDuration" min="60" max="240" value="60" placeholder="e.g., 60">
+                    </div>
                     <button type="submit" class="btn btn-primary">✨ Generate My Schedule!</button>
                 </form>
             </div>
@@ -495,10 +499,10 @@
                 </div>
                 <div class="input-group">
                     <label for="customReminderText">Message/Task</label>
-                    <input type="text" id="customReminderText" placeholder="e.g., Study Physics or Drink Water">
+                    <input type="text" id="customReminderText" placeholder="e.g., Study Physics or Hobbies: Painting">
                 </div>
                 <div class="input-group">
-                    <label for="customReminderDuration">Duration (minutes, optional for study tasks)</label>
+                    <label for="customReminderDuration">Duration (minutes, optional for study/hobby tasks)</label>
                     <input type="number" id="customReminderDuration" min="5" max="240" placeholder="e.g., 30">
                 </div>
                 <button class="btn btn-primary" id="addReminderBtn">➕ Add Reminder/Task</button>
@@ -572,6 +576,10 @@
                     <label for="sleepGoal">Sleep Goal (hours)</label>
                     <input type="number" id="sleepGoal" min="6" max="12" value="8">
                 </div>
+                <div class="input-group">
+                    <label for="dailyHobbyGoal">Daily Hobby Goal (hours)</label>
+                    <input type="number" id="dailyHobbyGoal" min="1" max="4" value="1">
+                </div>
                 <button class="btn btn-primary" id="saveProfileBtn">💾 Save Goals</button>
             </div>
         </div>
@@ -581,7 +589,7 @@
 
     <script>
         // State management
-        let appState = {
+        const appState = {
             user: {
                 name: 'Student',
                 avatar: '🎯',
@@ -591,15 +599,15 @@
                 theme: 'dark',
                 schedulesCreated: 0,
                 totalTasksCompleted: 0,
-                goals: { dailyStudy: 3, weeklyExercise: 4, sleep: 8 }
+                goals: { dailyStudy: 3, weeklyExercise: 4, sleep: 8, dailyHobby: 1 }
             },
             schedule: [],
             completedTasks: [],
             reminders: [],
             stats: {
                 tasksCompletedToday: 0,
-                focusScore: 0,
                 studyTime: 0,
+                hobbyTime: 0,
                 lastReviewDate: null,
                 lastStudyHours: 0
             },
@@ -607,691 +615,628 @@
         };
 
         // DOM elements
-        const elements = {
-            navBtns: document.querySelectorAll('.nav-btn'),
-            pages: document.querySelectorAll('.page'),
-            themeBtns: document.querySelectorAll('.theme-btn'),
-            scheduleForm: document.getElementById('scheduleForm'),
-            saveScheduleBtn: document.getElementById('saveScheduleBtn'),
-            addReminderBtn: document.getElementById('addReminderBtn'),
-            saveProfileBtn: document.getElementById('saveProfileBtn'),
-            avatarBtns: document.querySelectorAll('[data-avatar]'),
-            notification: document.getElementById('notification'),
-            createScheduleBtn: document.getElementById('createScheduleBtn')
+        const DOM = {
+            get: id => document.getElementById(id),
+            query: selector => document.querySelector(selector),
+            queryAll: selector => document.querySelectorAll(selector),
+            elements: {
+                navBtns: 'nav-btn',
+                pages: 'page',
+                themeBtns: 'theme-btn',
+                scheduleForm: 'scheduleForm',
+                saveScheduleBtn: 'saveScheduleBtn',
+                addReminderBtn: 'addReminderBtn',
+                saveProfileBtn: 'saveProfileBtn',
+                avatarBtns: '[data-avatar]',
+                notification: 'notification',
+                createScheduleBtn: 'createScheduleBtn'
+            }
         };
 
-        // Utility: Debounce function
-        function debounce(func, wait) {
-            let timeout;
-            return function (...args) {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func(...args), wait);
-            };
-        }
-
-        // Utility: Check if task is study-related
-        function isStudyTask(task) {
-            if (task.type === 'study') return true;
-            const title = task.title.toLowerCase();
-            return title.includes('study') || title.includes('studying') || title.includes('styng');
-        }
-
-        // Persistence: Save state to localStorage
-        function saveState(immediate = false) {
-            try {
-                const criticalState = {
-                    user: appState.user,
-                    schedule: appState.schedule,
-                    completedTasks: appState.completedTasks,
-                    stats: appState.stats
+        // Utility functions
+        const Utils = {
+            debounce: (func, wait) => {
+                let timeout;
+                return (...args) => {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => func(...args), wait);
                 };
-                localStorage.setItem('wakhtyState', JSON.stringify(criticalState));
-                localStorage.setItem('wakhtyStateFull', JSON.stringify(appState));
-            } catch (error) {
-                console.error('Save error:', error);
-                if (error.name === 'QuotaExceededError') {
-                    appState.achievements = appState.achievements.slice(-5);
-                    appState.reminders = appState.reminders.slice(-10);
-                    try {
-                        localStorage.setItem('wakhtyState', JSON.stringify({
-                            user: appState.user,
-                            schedule: appState.schedule,
-                            completedTasks: appState.completedTasks,
-                            stats: appState.stats
-                        }));
-                        showNotification('⚠️ Storage full, saved critical data only.');
-                    } catch (e) {
-                        showNotification('⚠️ Unable to save data.');
-                    }
-                } else {
-                    showNotification('⚠️ Failed to save data.');
-                }
-            }
-        }
-
-        const debouncedSave = debounce(saveState, 500);
-
-        // Persistence: Load state from localStorage
-        function loadState() {
-            try {
-                const savedState = localStorage.getItem('wakhtyState') || localStorage.getItem('wakhtyStateFull');
-                if (savedState) {
-                    appState = JSON.parse(savedState);
-                    appState.user = { ...appState.user, goals: appState.user.goals || { dailyStudy: 3, weeklyExercise: 4, sleep: 8 } };
-                    appState.stats = { 
-                        ...appState.stats, 
-                        tasksCompletedToday: appState.stats.tasksCompletedToday || 0, 
-                        focusScore: appState.stats.focusScore || 0, 
-                        studyTime: appState.stats.studyTime || 0, 
-                        lastReviewDate: appState.stats.lastReviewDate || null,
-                        lastStudyHours: appState.stats.lastStudyHours || 0
-                    };
-                    appState.schedule = appState.schedule || [];
-                    appState.completedTasks = appState.completedTasks || [];
-                    appState.reminders = appState.reminders || [];
-                    appState.achievements = appState.achievements || [];
-                }
-            } catch (error) {
-                console.error('Load error:', error);
-                showNotification('⚠️ Failed to load data. Using defaults.');
-            }
-        }
-
-        // Check for daily reset
-        function checkDailyReset() {
-            const today = new Date().toDateString();
-            if (appState.stats.lastReviewDate !== today) {
-                appState.stats.tasksCompletedToday = 0;
-                appState.stats.focusScore = 0;
-                appState.stats.studyTime = 0;
-                appState.stats.lastReviewDate = today;
-                saveState(true);
-            }
-        }
-
-        // Initialize app
-        function initApp() {
-            loadState();
-            setupEventListeners();
-            checkDailyReset();
-            updateAllDisplays();
-            startReminderSystem();
-            showNotification('👋 Welcome to Wakhty!');
-        }
-
-        // Event listeners
-        function setupEventListeners() {
-            elements.navBtns.forEach(btn => btn.addEventListener('click', () => showPage(btn.dataset.page)));
-            elements.themeBtns.forEach(btn => btn.addEventListener('click', () => setTheme(btn.dataset.theme)));
-            elements.scheduleForm.addEventListener('submit', generateSchedule);
-            elements.saveScheduleBtn.addEventListener('click', saveSchedule);
-            elements.addReminderBtn.addEventListener('click', addCustomReminder);
-            elements.saveProfileBtn.addEventListener('click', saveProfile);
-            elements.avatarBtns.forEach(btn => btn.addEventListener('click', () => changeAvatar(btn.dataset.avatar)));
-            elements.createScheduleBtn.addEventListener('click', () => showPage('scheduler'));
-        }
-
-        // Navigation
-        function showPage(pageId) {
-            elements.navBtns.forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.page === pageId);
-                btn.setAttribute('aria-current', btn.dataset.page === pageId ? 'page' : 'false');
-            });
-            elements.pages.forEach(page => page.classList.toggle('active', page.id === pageId));
-            saveState();
-        }
-
-        // Theme
-        function setTheme(theme) {
-            document.body.setAttribute('data-theme', theme);
-            appState.user.theme = theme;
-            elements.themeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.theme === theme));
-            saveState(true);
-            showNotification(`🎨 Theme set to ${theme}!`);
-        }
-
-        // Schedule generation
-        function generateSchedule(e) {
-            e.preventDefault();
-            const formData = {
-                userName: document.getElementById('userName').value.trim(),
-                schoolStart: document.getElementById('schoolStart').value,
-                schoolEnd: document.getElementById('schoolEnd').value,
-                bedTime: document.getElementById('bedTime').value,
-                wakeTime: document.getElementById('wakeTime').value,
-                studyHours: parseInt(document.getElementById('studyHours').value),
-                subjects: document.getElementById('subjects').value.split(',').map(s => s.trim()).filter(s => s),
-                gymTime: document.getElementById('gymTime').value,
-                gymDuration: parseInt(document.getElementById('gymDuration').value) || 60,
-                hobbies: document.getElementById('hobbies').value.trim()
-            };
-
-            if (!formData.userName) return showNotification('⚠️ Please enter your name.');
-            if (!formData.subjects.length) return showNotification('⚠️ Please enter at least one subject.');
-            if (formData.studyHours < 1 || formData.studyHours > 8) return showNotification('⚠️ Study hours must be 1-8.');
-            if (formData.gymDuration < 30 || formData.gymDuration > 180) return showNotification('⚠️ Exercise duration must be 30-180 minutes.');
-            if (formData.schoolStart >= formData.schoolEnd) return showNotification('⚠️ School end must be after start.');
-            if (formData.bedTime <= formData.wakeTime) return showNotification('⚠️ Bed time must be after wake time.');
-
-            appState.user.name = formData.userName;
-            appState.stats.lastStudyHours = formData.studyHours;
-            appState.schedule = createOptimizedSchedule(formData);
-            displaySchedule();
-            updateAllDisplays();
-            saveState(true);
-            showNotification('🎯 Schedule generated!');
-        }
-
-        function createOptimizedSchedule(data) {
-            const schedule = [];
-            const addTimeSlot = (time, title, description, emoji, type = 'general') => {
-                const duration = type === 'study' ? (data.studyHours * 60 / data.subjects.length) : (type === 'exercise' ? data.gymDuration : 0);
-                schedule.push({ time, title, description, completed: false, emoji, type, duration });
-            };
-
-            addTimeSlot(data.wakeTime, 'Wake Up', 'Morning routine', '☀️');
-            addTimeSlot(addMinutes(data.wakeTime, 30), 'Breakfast', 'Fuel up!', '🍳');
-            addTimeSlot(data.schoolStart, 'School', 'Learn and focus!', '🏫');
-            addTimeSlot(data.schoolEnd, 'School Ends', 'Great job!', '✅');
-            addTimeSlot(addMinutes(data.schoolEnd, 15), 'Lunch', 'Recharge', '🍴');
-            if (data.gymTime) addTimeSlot(data.gymTime, 'Exercise', 'Stay active!', '🏃‍♀️', 'exercise');
-
-            const studyStart = addMinutes(data.gymTime || data.schoolEnd, data.gymTime ? data.gymDuration : 30);
-            const sessionDuration = Math.max(30, (data.studyHours * 60) / data.subjects.length);
-            data.subjects.forEach((subject, i) => {
-                const sessionTime = addMinutes(studyStart, i * (sessionDuration + 15));
-                addTimeSlot(sessionTime, `Study: ${subject}`, `Focus on ${subject}`, '📖', 'study');
-                if (i < data.subjects.length - 1) {
-                    addTimeSlot(addMinutes(sessionTime, sessionDuration), 'Break', 'Short rest', '☕', 'break');
-                }
-            });
-
-            const dinnerTime = addMinutes(studyStart, data.studyHours * 60 + 30);
-            addTimeSlot(dinnerTime, 'Dinner', 'Enjoy your meal!', '🍽️');
-            if (data.hobbies) addTimeSlot(addMinutes(dinnerTime, 60), 'Hobbies', data.hobbies, '🎭', 'hobby');
-            addTimeSlot(addMinutes(data.bedTime, -30), 'Wind Down', 'Relax', '🌙');
-            addTimeSlot(data.bedTime, 'Bedtime', 'Sleep well!', '🛌');
-
-            return schedule.sort((a, b) => a.time.localeCompare(b.time));
-        }
-
-        function addMinutes(time, minutes) {
-            try {
+            },
+            isStudyTask: task => task.type === 'study' || /study|studying|styng/i.test(task.title),
+            isHobbyTask: task => task.type === 'hobby' || /hobby|hobbies/i.test(task.title),
+            timeToMinutes: time => {
                 const [hrs, mins] = time.split(':').map(Number);
-                if (isNaN(hrs) || isNaN(mins)) throw new Error('Invalid time');
-                const totalMins = hrs * 60 + mins + minutes;
-                const newHrs = Math.floor(totalMins / 60) % 24;
-                const newMins = totalMins % 60;
-                return `${newHrs.toString().padStart(2, '0')}:${newMins.toString().padStart(2, '0')}`;
-            } catch (error) {
-                console.error('addMinutes error:', error);
-                return time;
-            }
-        }
-
-        // Display schedule
-        function displaySchedule() {
-            const timeline = document.getElementById('scheduleTimeline');
-            const generatedSchedule = document.getElementById('generatedSchedule');
-            timeline.innerHTML = '';
-
-            appState.schedule.forEach((item, index) => {
-                const div = document.createElement('div');
-                div.className = `timeline-item ${item.completed ? 'completed' : ''}`;
-                const isStudy = isStudyTask(item);
-                div.innerHTML = `
-                    <span class="timeline-time">${item.time}</span>
-                    <div class="timeline-content">
-                        <div class="timeline-title">${item.title}</div>
-                        <div>${item.description}${isStudy && item.duration ? ` (${item.duration} min)` : ''}</div>
-                    </div>
-                    <span class="timeline-emoji">${item.emoji || '📅'}</span>
-                    <input type="checkbox" class="task-checkbox" data-index="${index}" ${item.completed ? 'checked' : ''} aria-label="Mark ${item.title} as completed">
-                `;
-                timeline.appendChild(div);
-            });
-
-            timeline.querySelectorAll('.task-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', (e) => {
-                    const index = parseInt(e.target.dataset.index);
-                    const wasCompleted = appState.schedule[index].completed;
-                    appState.schedule[index].completed = e.target.checked;
-                    const isStudy = isStudyTask(appState.schedule[index]);
-                    const duration = appState.schedule[index].duration || (isStudy ? 30 : 0); // Default 30 min for study tasks
-
-                    if (e.target.checked && !wasCompleted) {
-                        appState.stats.tasksCompletedToday++;
-                        appState.user.totalTasksCompleted++;
-                        appState.user.xp += 10;
-                        if (isStudy) {
-                            appState.stats.studyTime += duration / 60;
-                            appState.schedule[index].duration = duration; // Ensure duration is saved
-                        }
-                        appState.completedTasks.push({
-                            ...appState.schedule[index],
-                            completedAt: new Date().toISOString()
-                        });
-                        updateStreak();
-                        updateLevel();
-                        showNotification(`✅ ${appState.schedule[index].title} completed! +10 XP`);
-                    } else if (!e.target.checked && wasCompleted) {
-                        appState.stats.tasksCompletedToday = Math.max(0, appState.stats.tasksCompletedToday - 1);
-                        appState.user.totalTasksCompleted = Math.max(0, appState.user.totalTasksCompleted - 1);
-                        appState.user.xp = Math.max(0, appState.user.xp - 10);
-                        if (isStudy) {
-                            appState.stats.studyTime = Math.max(0, appState.stats.studyTime - (duration / 60));
-                        }
-                        appState.completedTasks = appState.completedTasks.filter(
-                            task => task.time !== appState.schedule[index].time || task.title !== appState.schedule[index].title
-                        );
-                        showNotification(`↩️ ${appState.schedule[index].title} unmarked`);
-                    }
-
-                    updateAllDisplays();
-                    updateAchievements();
-                    saveState(true);
+                return hrs * 60 + mins;
+            },
+            minutesToTime: totalMins => {
+                const hrs = Math.floor(totalMins / 60) % 24;
+                const mins = totalMins % 60;
+                return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+            },
+            addMinutes: (time, minutes) => {
+                try {
+                    const totalMins = Utils.timeToMinutes(time) + minutes;
+                    return Utils.minutesToTime(totalMins);
+                } catch (error) {
+                    console.error('addMinutes error:', error);
+                    return time;
+                }
+            },
+            checkOverlap: (schedule, newTask) => {
+                const newStart = Utils.timeToMinutes(newTask.time);
+                const newEnd = newStart + (newTask.duration || 0);
+                return schedule.some(task => {
+                    const taskStart = Utils.timeToMinutes(task.time);
+                    const taskEnd = taskStart + (task.duration || 0);
+                    return (newStart >= taskStart && newStart < taskEnd) || (newEnd > taskStart && newEnd <= taskEnd);
                 });
-            });
-
-            generatedSchedule.style.display = 'block';
-        }
-
-        // Update streak
-        function updateStreak() {
-            const today = new Date().toDateString();
-            if (appState.stats.lastReviewDate !== today && appState.stats.tasksCompletedToday > 0) {
-                appState.user.streak++;
-                appState.stats.lastReviewDate = today;
-                showNotification(`🔥 Streak increased to ${appState.user.streak}!`);
             }
-            saveState(true);
-        }
+        };
 
-        // Update level
-        function updateLevel() {
-            const newLevel = Math.floor(appState.user.xp / 100) + 1;
-            if (newLevel > appState.user.level) {
-                appState.user.level = newLevel;
-                showNotification(`🎉 Level up! Now level ${newLevel}!`);
-                saveState(true);
+        // Persistence
+        const Persistence = {
+            save: () => {
+                try {
+                    const state = {
+                        user: appState.user,
+                        schedule: appState.schedule,
+                        completedTasks: appState.completedTasks.slice(-50),
+                        reminders: appState.reminders.slice(-20),
+                        stats: appState.stats,
+                        achievements: appState.achievements.slice(-10)
+                    };
+                    localStorage.setItem('wakhtyState', JSON.stringify(state));
+                } catch (error) {
+                    console.error('Save error:', error);
+                    UI.notify('⚠️ Failed to save data.');
+                }
+            },
+            load: () => {
+                try {
+                    const savedState = localStorage.getItem('wakhtyState');
+                    if (savedState) {
+                        const state = JSON.parse(savedState);
+                        Object.assign(appState, state);
+                        appState.user.goals = state.user.goals || { dailyStudy: 3, weeklyExercise: 4, sleep: 8, dailyHobby: 1 };
+                        appState.stats = {
+                            tasksCompletedToday: state.stats.tasksCompletedToday || 0,
+                            studyTime: state.stats.studyTime || 0,
+                            hobbyTime: state.stats.hobbyTime || 0,
+                            lastReviewDate: state.stats.lastReviewDate || null,
+                            lastStudyHours: state.stats.lastStudyHours || 0
+                        };
+                    }
+                } catch (error) {
+                    console.error('Load error:', error);
+                    UI.notify('⚠️ Failed to load data. Using defaults.');
+                }
             }
-        }
+        };
 
-        // Save schedule
-        function saveSchedule() {
-            appState.user.schedulesCreated++;
-            updateReminders();
-            updateAllDisplays();
-            updateAchievements();
-            saveState(true);
-            showNotification('💾 Schedule saved!');
-            showPage('home');
-        }
+        const debouncedSave = Utils.debounce(Persistence.save, 500);
+
+        // State management
+        const State = {
+            resetDaily: () => {
+                const today = new Date().toDateString();
+                if (appState.stats.lastReviewDate !== today) {
+                    appState.stats.tasksCompletedToday = 0;
+                    appState.stats.studyTime = 0;
+                    appState.stats.hobbyTime = 0;
+                    appState.stats.lastReviewDate = today;
+                    Persistence.save();
+                }
+            },
+            updateStreak: () => {
+                const today = new Date().toDateString();
+                if (appState.stats.lastReviewDate !== today && appState.stats.tasksCompletedToday > 0) {
+                    appState.user.streak++;
+                    appState.stats.lastReviewDate = today;
+                    UI.notify(`🔥 Streak increased to ${appState.user.streak}!`);
+                    Persistence.save();
+                }
+            },
+            updateLevel: () => {
+                const newLevel = Math.floor(appState.user.xp / 100) + 1;
+                if (newLevel > appState.user.level) {
+                    appState.user.level = newLevel;
+                    UI.notify(`🎉 Level up! Now level ${newLevel}!`);
+                    Persistence.save();
+                }
+            },
+            completeTask: (task, index, source = 'schedule') => {
+                const wasCompleted = task.completed;
+                task.completed = true;
+                const isStudy = Utils.isStudyTask(task);
+                const isHobby = Utils.isHobbyTask(task);
+                const duration = task.duration || (isStudy ? 30 : isHobby ? 60 : 0);
+
+                if (!wasCompleted) {
+                    appState.stats.tasksCompletedToday++;
+                    appState.user.totalTasksCompleted++;
+                    appState.user.xp += 10;
+                    if (isStudy) appState.stats.studyTime += duration / 60;
+                    if (isHobby) appState.stats.hobbyTime += duration / 60;
+                    task.duration = duration;
+
+                    appState.completedTasks.push({
+                        ...task,
+                        completedAt: new Date().toISOString()
+                    });
+
+                    State.updateStreak();
+                    State.updateLevel();
+                    UI.notify(`✅ ${task.title} completed! +10 XP`);
+                }
+
+                if (source === 'schedule') appState.schedule[index] = task;
+                else appState.reminders[index] = task;
+
+                UI.update();
+                Achievements.update();
+                Persistence.save();
+            },
+            uncompleteTask: (task, index, source = 'schedule') => {
+                const wasCompleted = task.completed;
+                task.completed = false;
+                const isStudy = Utils.isStudyTask(task);
+                const isHobby = Utils.isHobbyTask(task);
+                const duration = task.duration || (isStudy ? 30 : isHobby ? 60 : 0);
+
+                if (wasCompleted) {
+                    appState.stats.tasksCompletedToday = Math.max(0, appState.stats.tasksCompletedToday - 1);
+                    appState.user.totalTasksCompleted = Math.max(0, appState.user.totalTasksCompleted - 1);
+                    appState.user.xp = Math.max(0, appState.user.xp - 10);
+                    if (isStudy) appState.stats.studyTime = Math.max(0, appState.stats.studyTime - duration / 60);
+                    if (isHobby) appState.stats.hobbyTime = Math.max(0, appState.stats.hobbyTime - duration / 60);
+
+                    appState.completedTasks = appState.completedTasks.filter(
+                        t => t.time !== task.time || t.title !== task.title
+                    );
+
+                    UI.notify(`↩️ ${task.title} unmarked`);
+                }
+
+                if (source === 'schedule') appState.schedule[index] = task;
+                else appState.reminders[index] = task;
+
+                UI.update();
+                Achievements.update();
+                Persistence.save();
+            }
+        };
+
+        // UI management
+        const UI = {
+            notify: message => {
+                const notification = DOM.get('notification');
+                notification.textContent = message;
+                notification.classList.add('show');
+                setTimeout(() => notification.classList.remove('show'), 3000);
+            },
+            showPage: pageId => {
+                DOM.queryAll(`.${DOM.elements.navBtns}`).forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.page === pageId);
+                    btn.setAttribute('aria-current', btn.dataset.page === pageId ? 'page' : 'false');
+                });
+                DOM.queryAll(`.${DOM.elements.pages}`).forEach(page => page.classList.toggle('active', page.id === pageId));
+                debouncedSave();
+            },
+            setTheme: theme => {
+                document.body.setAttribute('data-theme', theme);
+                appState.user.theme = theme;
+                DOM.queryAll(`.${DOM.elements.themeBtns}`).forEach(btn => btn.classList.toggle('active', btn.dataset.theme === theme));
+                UI.notify(`🎨 Theme set to ${theme}!`);
+                Persistence.save();
+            },
+            displaySchedule: () => {
+                const timeline = DOM.get('scheduleTimeline');
+                const generatedSchedule = DOM.get('generatedSchedule');
+                timeline.innerHTML = '';
+
+                appState.schedule.forEach((item, index) => {
+                    const isStudy = Utils.isStudyTask(item);
+                    const isHobby = Utils.isHobbyTask(item);
+                    const div = document.createElement('div');
+                    div.className = `timeline-item ${item.completed ? 'completed' : ''}`;
+                    div.innerHTML = `
+                        <span class="timeline-time">${item.time}</span>
+                        <div class="timeline-content">
+                            <div class="timeline-title">${item.title}</div>
+                            <div>${item.description}${(isStudy || isHobby) && item.duration ? ` (${item.duration} min)` : ''}</div>
+                        </div>
+                        <span class="timeline-emoji">${item.emoji || '📅'}</span>
+                        <input type="checkbox" class="task-checkbox" data-index="${index}" ${item.completed ? 'checked' : ''} aria-label="Mark ${item.title} as completed">
+                    `;
+                    timeline.appendChild(div);
+                });
+
+                timeline.querySelectorAll('.task-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', e => {
+                        const index = parseInt(e.target.dataset.index);
+                        if (e.target.checked) {
+                            State.completeTask({ ...appState.schedule[index] }, index, 'schedule');
+                        } else {
+                            State.uncompleteTask({ ...appState.schedule[index] }, index, 'schedule');
+                        }
+                    });
+                });
+
+                generatedSchedule.style.display = appState.schedule.length ? 'block' : 'none';
+            },
+            displayReminders: () => {
+                const remindersList = DOM.get('remindersList');
+                remindersList.innerHTML = appState.reminders.length ? '' : '<p style="color: var(--text-secondary); font-style: italic;">Create a schedule or add reminders! 📅</p>';
+
+                appState.reminders.forEach((reminder, index) => {
+                    const isStudy = Utils.isStudyTask(reminder);
+                    const isHobby = Utils.isHobbyTask(reminder);
+                    const div = document.createElement('div');
+                    div.className = `reminder-item ${reminder.completed ? 'completed' : ''}`;
+                    div.innerHTML = `
+                        <div>
+                            <div class="reminder-time">${reminder.time}</div>
+                            <div>${reminder.message}${(isStudy || isHobby) && reminder.duration ? ` (${reminder.duration} min)` : ''}</div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="checkbox" class="reminder-checkbox" data-index="${index}" ${reminder.completed ? 'checked' : ''} aria-label="Mark ${reminder.message} as completed">
+                            <button class="btn btn-primary" data-index="${index}" aria-label="Remove reminder for ${reminder.message}">❌</button>
+                        </div>
+                    `;
+                    remindersList.appendChild(div);
+                });
+
+                remindersList.querySelectorAll('.reminder-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', e => {
+                        const index = parseInt(e.target.dataset.index);
+                        if (e.target.checked) {
+                            State.completeTask({ ...appState.reminders[index] }, index, 'reminders');
+                        } else {
+                            State.uncompleteTask({ ...appState.reminders[index] }, index, 'reminders');
+                        }
+                    });
+                });
+
+                remindersList.querySelectorAll('button').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const index = parseInt(btn.dataset.index);
+                        if (appState.reminders[index].completed) {
+                            State.uncompleteTask({ ...appState.reminders[index] }, index, 'reminders');
+                        }
+                        appState.reminders.splice(index, 1);
+                        UI.displayReminders();
+                        UI.update();
+                        Persistence.save();
+                        UI.notify('🗑️ Reminder/task removed!');
+                    });
+                });
+            },
+            displayCompletedTasks: () => {
+                const completedTasksList = DOM.get('completedTasksList');
+                completedTasksList.innerHTML = appState.completedTasks.length ? '' : '<p style="color: var(--text-secondary); font-style: italic;">No tasks completed yet! 📅</p>';
+
+                appState.completedTasks.forEach(task => {
+                    const isStudy = Utils.isStudyTask(task);
+                    const isHobby = Utils.isHobbyTask(task);
+                    const div = document.createElement('div');
+                    div.className = 'timeline-item completed';
+                    div.innerHTML = `
+                        <span class="timeline-time">${task.time}</span>
+                        <div class="timeline-content">
+                            <div class="timeline-title">${task.title}</div>
+                            <div>${task.description}${(isStudy || isHobby) && task.duration ? ` (${task.duration} min)` : ''} (Completed: ${new Date(task.completedAt).toLocaleDateString()})</div>
+                        </div>
+                        <span class="timeline-emoji">${task.emoji || '✅'}</span>
+                    `;
+                    completedTasksList.appendChild(div);
+                });
+            },
+            updateTodaysSummary: () => {
+                const summary = DOM.get('todaysSummary');
+                if (!appState.schedule.length) {
+                    summary.innerHTML = `
+                        <div class="timeline-item">
+                            <span class="timeline-time">--:--</span>
+                            <div class="timeline-content">
+                                <div class="timeline-title">No schedule created yet</div>
+                                <div>Create your first schedule to get started! 🚀</div>
+                            </div>
+                            <span class="timeline-emoji">📅</span>
+                        </div>`;
+                    return;
+                }
+
+                summary.innerHTML = '';
+                const now = new Date();
+                const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+                const upcoming = appState.schedule.filter(item => item.time >= currentTime && !item.completed).slice(0, 3);
+
+                if (!upcoming.length) {
+                    summary.innerHTML = `
+                        <div class="timeline-item">
+                            <span class="timeline-time">🎉</span>
+                            <div class="timeline-content">
+                                <div class="timeline-title">All done for today!</div>
+                                <div>Great job completing your schedule! 🌟</div>
+                            </div>
+                            <span class="timeline-emoji">✅</span>
+                        </div>`;
+                    return;
+                }
+
+                upcoming.forEach(item => {
+                    const isStudy = Utils.isStudyTask(item);
+                    const isHobby = Utils.isHobbyTask(item);
+                    const div = document.createElement('div');
+                    div.className = 'timeline-item';
+                    div.innerHTML = `
+                        <span class="timeline-time">${item.time}</span>
+                        <div class="timeline-content">
+                            <div class="timeline-title">${item.title}</div>
+                            <div>${item.description}${(isStudy || isHobby) && item.duration ? ` (${item.duration} min)` : ''}</div>
+                        </div>
+                        <span class="timeline-emoji">${item.emoji || '📅'}</span>
+                    `;
+                    summary.appendChild(div);
+                });
+            },
+            update: () => {
+                DOM.get('welcomeText').textContent = `Welcome back, ${appState.user.name}!`;
+                DOM.get('userLevel').textContent = appState.user.level;
+                DOM.get('userXP').textContent = appState.user.xp;
+                DOM.get('userAvatar').textContent = appState.user.avatar;
+                DOM.get('profileName').textContent = appState.user.name;
+                DOM.get('profileLevel').textContent = appState.user.level;
+                DOM.get('profileXP').textContent = appState.user.xp;
+                DOM.get('profileAvatar').textContent = appState.user.avatar;
+                DOM.get('currentStreak').textContent = appState.user.streak;
+                DOM.get('tasksCompleted').textContent = appState.stats.tasksCompletedToday;
+                DOM.get('studyTime').textContent = `${appState.stats.studyTime.toFixed(1)}h`;
+                DOM.get('hobbyTime').textContent = `${appState.stats.hobbyTime.toFixed(1)}h`;
+                DOM.get('progressStreak').textContent = appState.user.streak;
+                DOM.get('weeklyCompletion').textContent = `${Math.min(100, appState.user.streak * 14.3).toFixed(0)}%`;
+                DOM.get('streakProgress').style.width = `${Math.min(100, (appState.user.streak / 30) * 100)}%`;
+                DOM.get('weeklyProgress').style.width = `${Math.min(100, appState.user.streak * 14.3)}%`;
+                DOM.get('dailyStudyGoal').value = appState.user.goals.dailyStudy;
+                DOM.get('weeklyExerciseGoal').value = appState.user.goals.weeklyExercise;
+                DOM.get('sleepGoal').value = appState.user.goals.sleep;
+                DOM.get('dailyHobbyGoal').value = appState.user.goals.dailyHobby;
+                document.body.setAttribute('data-theme', appState.user.theme);
+                DOM.queryAll(`.${DOM.elements.themeBtns}`).forEach(btn => btn.classList.toggle('active', btn.dataset.theme === appState.user.theme));
+
+                UI.updateTodaysSummary();
+                UI.displaySchedule();
+                UI.displayReminders();
+                Achievements.display();
+                UI.displayCompletedTasks();
+            }
+        };
+
+        // Schedule management
+        const Schedule = {
+            generate: e => {
+                e.preventDefault();
+                const formData = {
+                    userName: DOM.get('userName').value.trim(),
+                    schoolStart: DOM.get('schoolStart').value,
+                    schoolEnd: DOM.get('schoolEnd').value,
+                    bedTime: DOM.get('bedTime').value,
+                    wakeTime: DOM.get('wakeTime').value,
+                    studyHours: parseInt(DOM.get('studyHours').value),
+                    subjects: DOM.get('subjects').value.split(',').map(s => s.trim()).filter(s => s),
+                    gymTime: DOM.get('gymTime').value,
+                    gymDuration: parseInt(DOM.get('gymDuration').value) || 60,
+                    hobbies: DOM.get('hobbies').value.trim(),
+                    hobbyDuration: parseInt(DOM.get('hobbyDuration').value) || 60
+                };
+
+                if (!formData.userName) return UI.notify('⚠️ Please enter your name.');
+                if (!formData.subjects.length) return UI.notify('⚠️ Please enter at least one subject.');
+                if (formData.studyHours < 1 || formData.studyHours > 8) return UI.notify('⚠️ Study hours must be 1-8.');
+                if (formData.gymDuration < 30 || formData.gymDuration > 180) return UI.notify('⚠️ Exercise duration must be 30-180 minutes.');
+                if (formData.hobbyDuration < 60 || formData.hobbyDuration > 240) return UI.notify('⚠️ Hobby duration must be 60-240 minutes.');
+                if (formData.schoolStart >= formData.schoolEnd) return UI.notify('⚠️ School end must be after start.');
+                if (Utils.timeToMinutes(formData.bedTime) <= Utils.timeToMinutes(formData.wakeTime) + 360) {
+                    return UI.notify('⚠️ Bedtime must be at least 6 hours after wake time.');
+                }
+
+                const availableTime = Utils.timeToMinutes(formData.bedTime) - Utils.timeToMinutes(formData.schoolEnd) - 90;
+                const requiredTime = formData.studyHours * 60 + formData.gymDuration + formData.hobbyDuration + 60;
+                if (availableTime < requiredTime) {
+                    return UI.notify('⚠️ Not enough time for all tasks before bedtime.');
+                }
+
+                appState.user.name = formData.userName;
+                appState.stats.lastStudyHours = formData.studyHours;
+                appState.schedule = Schedule.create(formData);
+                UI.update();
+                Persistence.save();
+                UI.notify('🎯 Schedule generated!');
+            },
+            create: data => {
+                const schedule = [];
+                const addTimeSlot = (time, title, description, emoji, type = 'general', duration = 0) => {
+                    const task = { time, title, description, completed: false, emoji, type, duration };
+                    if (!Utils.checkOverlap(schedule, task)) {
+                        schedule.push(task);
+                    }
+                };
+
+                addTimeSlot(data.wakeTime, 'Wake Up', 'Morning routine', '☀️');
+                addTimeSlot(Utils.addMinutes(data.wakeTime, 30), 'Breakfast', 'Fuel up!', '🍳');
+                addTimeSlot(data.schoolStart, 'School', 'Learn and focus!', '🏫');
+                addTimeSlot(data.schoolEnd, 'School Ends', 'Great job!', '✅');
+                addTimeSlot(Utils.addMinutes(data.schoolEnd, 15), 'Lunch', 'Recharge', '🍴');
+                if (data.gymTime) addTimeSlot(data.gymTime, 'Exercise', 'Stay active!', '🏃‍♀️', 'exercise', data.gymDuration);
+
+                let currentTime = Utils.addMinutes(data.gymTime || data.schoolEnd, data.gymTime ? data.gymDuration : 30);
+                const sessionDuration = Math.max(30, (data.studyHours * 60) / data.subjects.length);
+                data.subjects.forEach((subject, i) => {
+                    addTimeSlot(currentTime, `Study: ${subject}`, `Focus on ${subject}`, '📖', 'study', sessionDuration);
+                    currentTime = Utils.addMinutes(currentTime, sessionDuration);
+                    if (i < data.subjects.length - 1) {
+                        addTimeSlot(currentTime, 'Break', 'Short rest', '☕', 'break', 15);
+                        currentTime = Utils.addMinutes(currentTime, 15);
+                    }
+                });
+
+                currentTime = Utils.addMinutes(currentTime, 30);
+                addTimeSlot(currentTime, 'Dinner', 'Enjoy your meal!', '🍽️');
+
+                if (data.hobbies) {
+                    const hobbyTime = Utils.addMinutes(data.bedTime, -90);
+                    addTimeSlot(hobbyTime, 'Hobbies', data.hobbies, '🎭', 'hobby', Math.max(60, data.hobbyDuration));
+                }
+
+                addTimeSlot(Utils.addMinutes(data.bedTime, -30), 'Wind Down', 'Relax', '🌙');
+                addTimeSlot(data.bedTime, 'Bedtime', 'Sleep well!', '🛌');
+
+                return schedule.sort((a, b) => a.time.localeCompare(b.time));
+            },
+            save: () => {
+                appState.user.schedulesCreated++;
+                appState.reminders = appState.schedule.map(item => ({
+                    time: item.time,
+                    message: item.title,
+                    type: item.type,
+                    duration: item.duration || 0,
+                    completed: false
+                }));
+                UI.update();
+                Achievements.update();
+                Persistence.save();
+                UI.notify('💾 Schedule saved!');
+                UI.showPage('home');
+            }
+        };
 
         // Reminders
-        function updateReminders() {
-            appState.reminders = appState.schedule.map(item => ({
-                time: item.time,
-                message: item.title,
-                type: item.type,
-                duration: item.duration || 0
-            }));
-            displayReminders();
-            saveState(true);
-        }
+        const Reminders = {
+            add: () => {
+                const time = DOM.get('customReminderTime').value;
+                const message = DOM.get('customReminderText').value.trim();
+                const duration = parseInt(DOM.get('customReminderDuration').value) || 0;
 
-        function displayReminders() {
-            const remindersList = document.getElementById('remindersList');
-            remindersList.innerHTML = appState.reminders.length ? '' : '<p style="color: var(--text-secondary); font-style: italic;">Create a schedule or add reminders! 📅</p>';
+                if (!time || !message) return UI.notify('⚠️ Please enter time and message.');
 
-            appState.reminders.forEach((reminder, index) => {
-                const div = document.createElement('div');
-                div.className = `reminder-item ${reminder.completed ? 'completed' : ''}`;
-                const isStudy = isStudyTask({ title: reminder.message, type: reminder.type });
-                div.innerHTML = `
-                    <div>
-                        <div class="reminder-time">${reminder.time}</div>
-                        <div>${reminder.message}${isStudy && reminder.duration ? ` (${reminder.duration} min)` : ''}</div>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="checkbox" class="reminder-checkbox" data-index="${index}" ${reminder.completed ? 'checked' : ''} aria-label="Mark ${reminder.message} as completed">
-                        <button class="btn btn-primary" data-index="${index}" aria-label="Remove reminder for ${reminder.message}">❌</button>
-                    </div>
-                `;
-                remindersList.appendChild(div);
-            });
+                const isStudy = Utils.isStudyTask({ title: message });
+                const isHobby = Utils.isHobbyTask({ title: message });
+                if (isStudy && duration && (duration < 5 || duration > 240)) {
+                    return UI.notify('⚠️ Study task duration must be 5-240 minutes.');
+                }
+                if (isHobby && duration && (duration < 60 || duration > 240)) {
+                    return UI.notify('⚠️ Hobby task duration must be 60-240 minutes.');
+                }
 
-            remindersList.querySelectorAll('.reminder-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', (e) => {
-                    const index = parseInt(e.target.dataset.index);
-                    const wasCompleted = appState.reminders[index].completed || false;
-                    appState.reminders[index].completed = e.target.checked;
-                    const isStudy = isStudyTask({ title: appState.reminders[index].message, type: appState.reminders[index].type });
-                    const duration = appState.reminders[index].duration || (isStudy ? 30 : 0);
+                const reminder = {
+                    time,
+                    message,
+                    type: isStudy ? 'study' : isHobby ? 'hobby' : 'custom',
+                    duration: isStudy ? (duration || 30) : isHobby ? (duration || 60) : duration,
+                    completed: false
+                };
 
-                    if (e.target.checked && !wasCompleted) {
-                        appState.stats.tasksCompletedToday++;
-                        appState.user.totalTasksCompleted++;
-                        appState.user.xp += 10;
-                        if (isStudy) {
-                            appState.stats.studyTime += duration / 60;
-                            appState.reminders[index].duration = duration;
-                        }
-                        appState.completedTasks.push({
-                            time: appState.reminders[index].time,
-                            title: appState.reminders[index].message,
-                            description: 'Custom task/reminder',
-                            emoji: isStudy ? '📖' : '📅',
-                            type: appState.reminders[index].type || (isStudy ? 'study' : 'custom'),
-                            duration,
-                            completedAt: new Date().toISOString()
-                        });
-                        updateStreak();
-                        updateLevel();
-                        showNotification(`✅ ${appState.reminders[index].message} completed! +10 XP`);
-                    } else if (!e.target.checked && wasCompleted) {
-                        appState.stats.tasksCompletedToday = Math.max(0, appState.stats.tasksCompletedToday - 1);
-                        appState.user.totalTasksCompleted = Math.max(0, appState.user.totalTasksCompleted - 1);
-                        appState.user.xp = Math.max(0, appState.user.xp - 10);
-                        if (isStudy) {
-                            appState.stats.studyTime = Math.max(0, appState.stats.studyTime - (duration / 60));
-                        }
-                        appState.completedTasks = appState.completedTasks.filter(
-                            task => task.time !== appState.reminders[index].time || task.title !== appState.reminders[index].message
-                        );
-                        showNotification(`↩️ ${appState.reminders[index].message} unmarked`);
-                    }
-
-                    updateAllDisplays();
-                    updateAchievements();
-                    saveState(true);
-                });
-            });
-
-            remindersList.querySelectorAll('button').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const index = parseInt(btn.dataset.index);
-                    if (appState.reminders[index].completed) {
-                        appState.stats.tasksCompletedToday = Math.max(0, appState.stats.tasksCompletedToday - 1);
-                        appState.user.totalTasksCompleted = Math.max(0, appState.user.totalTasksCompleted - 1);
-                        appState.user.xp = Math.max(0, appState.user.xp - 10);
-                        const isStudy = isStudyTask({ title: appState.reminders[index].message, type: appState.reminders[index].type });
-                        if (isStudy && appState.reminders[index].duration) {
-                            appState.stats.studyTime = Math.max(0, appState.stats.studyTime - (appState.reminders[index].duration / 60));
-                        }
-                    }
-                    appState.reminders.splice(index, 1);
-                    displayReminders();
-                    updateAllDisplays();
-                    saveState(true);
-                    showNotification('🗑️ Reminder/task removed!');
-                });
-            });
-        }
-
-        function addCustomReminder() {
-            const time = document.getElementById('customReminderTime').value;
-            const text = document.getElementById('customReminderText').value.trim();
-            const duration = parseInt(document.getElementById('customReminderDuration').value) || 0;
-            if (!time || !text) return showNotification('⚠️ Please enter time and message.');
-
-            const isStudy = isStudyTask({ title: text });
-            if (isStudy && duration && (duration < 5 || duration > 240)) {
-                return showNotification('⚠️ Study task duration must be 5-240 minutes.');
-            }
-
-            appState.reminders.push({
-                time,
-                message: text,
-                type: isStudy ? 'study' : 'custom',
-                duration: isStudy ? (duration || 30) : duration,
-                completed: false
-            });
-            appState.reminders.sort((a, b) => a.time.localeCompare(b.time));
-            displayReminders();
-            saveState(true);
-            document.getElementById('customReminderTime').value = '';
-            document.getElementById('customReminderText').value = '';
-            document.getElementById('customReminderDuration').value = '';
-            showNotification('✅ Reminder/task added!');
-        }
-
-        // Display schedule
-        function displaySchedule() {
-            const timeline = document.getElementById('scheduleTimeline');
-            const generatedSchedule = document.getElementById('generatedSchedule');
-            timeline.innerHTML = '';
-
-            appState.schedule.forEach((item, index) => {
-                const div = document.createElement('div');
-                div.className = `timeline-item ${item.completed ? 'completed' : ''}`;
-                const isStudy = isStudyTask(item);
-                div.innerHTML = `
-                    <span class="timeline-time">${item.time}</span>
-                    <div class="timeline-content">
-                        <div class="timeline-title">${item.title}</div>
-                        <div>${item.description}${isStudy && item.duration ? ` (${item.duration} min)` : ''}</div>
-                    </div>
-                    <span class="timeline-emoji">${item.emoji || '📅'}</span>
-                    <input type="checkbox" class="task-checkbox" data-index="${index}" ${item.completed ? 'checked' : ''} aria-label="Mark ${item.title} as completed">
-                `;
-                timeline.appendChild(div);
-            });
-
-            timeline.querySelectorAll('.task-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', (e) => {
-                    const index = parseInt(e.target.dataset.index);
-                    const wasCompleted = appState.schedule[index].completed;
-                    appState.schedule[index].completed = e.target.checked;
-                    const isStudy = isStudyTask(appState.schedule[index]);
-                    const duration = appState.schedule[index].duration || (isStudy ? 30 : 0); // Default 30 min for study tasks
-
-                    if (e.target.checked && !wasCompleted) {
-                        appState.stats.tasksCompletedToday++;
-                        appState.user.totalTasksCompleted++;
-                        appState.user.xp += 10;
-                        if (isStudy) {
-                            appState.stats.studyTime += duration / 60;
-                            appState.schedule[index].duration = duration; // Ensure duration is saved
-                        }
-                        appState.completedTasks.push({
-                            ...appState.schedule[index],
-                            completedAt: new Date().toISOString()
-                        });
-                        updateStreak();
-                        updateLevel();
-                        showNotification(`✅ ${appState.schedule[index].title} completed! +10 XP`);
-                    } else if (!e.target.checked && wasCompleted) {
-                        appState.stats.tasksCompletedToday = Math.max(0, appState.stats.tasksCompletedToday - 1);
-                        appState.user.totalTasksCompleted = Math.max(0, appState.user.totalTasksCompleted - 1);
-                        appState.user.xp = Math.max(0, appState.user.xp - 10);
-                        if (isStudy) {
-                            appState.stats.studyTime = Math.max(0, appState.stats.studyTime - (duration / 60));
-                        }
-                        appState.completedTasks = appState.completedTasks.filter(
-                            task => task.time !== appState.schedule[index].time || task.title !== appState.schedule[index].title
-                        );
-                        showNotification(`↩️ ${appState.schedule[index].title} unmarked`);
-                    }
-
-                    updateAllDisplays();
-                    updateAchievements();
-                    saveState(true);
-                });
-            });
-
-            generatedSchedule.style.display = 'block';
-        }
-
-        // Profile
-        function changeAvatar(emoji) {
-            appState.user.avatar = emoji;
-            updateAllDisplays();
-            saveState(true);
-            showNotification(`🎭 Avatar changed to ${emoji}!`);
-        }
-
-        function saveProfile() {
-            const goals = {
-                dailyStudy: parseInt(document.getElementById('dailyStudyGoal').value) || 3,
-                weeklyExercise: parseInt(document.getElementById('weeklyExerciseGoal').value) || 4,
-                sleep: parseInt(document.getElementById('sleepGoal').value) || 8
-            };
-            if (goals.dailyStudy < 1 || goals.dailyStudy > 12 || goals.weeklyExercise < 1 || goals.weeklyExercise > 7 || goals.sleep < 6 || goals.sleep > 12) {
-                return showNotification('⚠️ Invalid goal values.');
-            }
-            appState.user.goals = goals;
-            updateAllDisplays();
-            saveState(true);
-            showNotification('💾 Goals saved!');
-        }
-
-        // Achievements
-        function updateAchievements() {
-            const achievements = [];
-            if (appState.user.schedulesCreated >= 1) achievements.push({ title: 'First Schedule', description: 'Created your first schedule!', emoji: '📅' });
-            if (appState.user.streak >= 3) achievements.push({ title: 'Streak Master', description: '3-day streak!', emoji: '🔥' });
-            if (appState.user.totalTasksCompleted >= 10) achievements.push({ title: 'Task Crusher', description: 'Completed 10 tasks!', emoji: '💪' });
-            if (appState.user.level >= 2) achievements.push({ title: 'Rising Star', description: 'Reached level 2!', emoji: '⭐' });
-            if (appState.stats.studyTime >= appState.user.goals.dailyStudy) achievements.push({ title: 'Study Star', description: 'Met your daily study goal!', emoji: '📚' });
-            appState.achievements = achievements;
-            displayAchievements();
-            saveState(true);
-        }
-
-        function displayAchievements() {
-            const achievementsList = document.getElementById('achievementsList');
-            achievementsList.innerHTML = appState.achievements.length ? '' : '<p style="color: var(--text-secondary); font-style: italic;">Complete tasks to unlock achievements! 🎯</p>';
-
-            appState.achievements.forEach(achievement => {
-                const div = document.createElement('div');
-                div.style = 'padding: 10px; margin: 5px 0; background: var(--primary); border-radius: 8px;';
-                div.innerHTML = `<span style="font-size: 1.5rem; margin-right: 10px;">${achievement.emoji}</span> <strong>${achievement.title}</strong>: ${achievement.description}`;
-                achievementsList.appendChild(div);
-            });
-        }
-
-        // Display completed tasks
-        function displayCompletedTasks() {
-            const completedTasksList = document.getElementById('completedTasksList');
-            completedTasksList.innerHTML = appState.completedTasks.length ? '' : '<p style="color: var(--text-secondary); font-style: italic;">No tasks completed yet! 📅</p>';
-
-            appState.completedTasks.forEach(task => {
-                const div = document.createElement('div');
-                div.className = 'timeline-item completed';
-                const isStudy = isStudyTask(task);
-                div.innerHTML = `
-                    <span class="timeline-time">${task.time}</span>
-                    <div class="timeline-content">
-                        <div class="timeline-title">${task.title}</div>
-                        <div>${task.description}${isStudy && task.duration ? ` (${task.duration} min)` : ''} (Completed: ${new Date(task.completedAt).toLocaleDateString()})</div>
-                    </div>
-                    <span class="timeline-emoji">${task.emoji || '✅'}</span>
-                `;
-                completedTasksList.appendChild(div);
-            });
-        }
-
-        // Update displays
-        function updateAllDisplays() {
-            document.getElementById('welcomeText').textContent = `Welcome back, ${appState.user.name}!`;
-            document.getElementById('userLevel').textContent = appState.user.level;
-            document.getElementById('userXP').textContent = appState.user.xp;
-            document.getElementById('userAvatar').textContent = appState.user.avatar;
-            document.getElementById('profileName').textContent = appState.user.name;
-            document.getElementById('profileLevel').textContent = appState.user.level;
-            document.getElementById('profileXP').textContent = appState.user.xp;
-            document.getElementById('profileAvatar').textContent = appState.user.avatar;
-            document.getElementById('currentStreak').textContent = appState.user.streak;
-            document.getElementById('tasksCompleted').textContent = appState.stats.tasksCompletedToday;
-            document.getElementById('focusScore').textContent = appState.stats.focusScore;
-            document.getElementById('timeSpent').textContent = `${appState.stats.studyTime.toFixed(1)}h`;
-            document.getElementById('progressStreak').textContent = appState.user.streak;
-            document.getElementById('weeklyCompletion').textContent = `${Math.min(100, appState.user.streak * 14.3).toFixed(0)}%`;
-            document.getElementById('streakProgress').style.width = `${Math.min(100, (appState.user.streak / 30) * 100)}%`;
-            document.getElementById('weeklyProgress').style.width = `${Math.min(100, appState.user.streak * 14.3)}%`;
-            document.getElementById('dailyStudyGoal').value = appState.user.goals.dailyStudy;
-            document.getElementById('weeklyExerciseGoal').value = appState.user.goals.weeklyExercise;
-            document.getElementById('sleepGoal').value = appState.user.goals.sleep;
-            document.body.setAttribute('data-theme', appState.user.theme);
-            elements.themeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.theme === appState.user.theme));
-
-            updateTodaysSummary();
-            displaySchedule();
-            displayReminders();
-            displayAchievements();
-            displayCompletedTasks();
-        }
-
-        // Today's summary
-        function updateTodaysSummary() {
-            const summary = document.getElementById('todaysSummary');
-            if (!appState.schedule.length) {
-                summary.innerHTML = `
-                    <div class="timeline-item">
-                        <span class="timeline-time">--:--</span>
-                        <div class="timeline-content">
-                            <div class="timeline-title">No schedule created yet</div>
-                            <div>Create your first schedule to get started! 🚀</div>
-                        </div>
-                        <span class="timeline-emoji">📅</span>
-                    </div>`;
-                return;
-            }
-
-            summary.innerHTML = '';
-            const now = new Date();
-            const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-            const upcoming = appState.schedule.filter(item => item.time >= currentTime && !item.completed).slice(0, 3);
-
-            if (!upcoming.length) {
-                summary.innerHTML = `
-                    <div class="timeline-item">
-                        <span class="timeline-time">🎉</span>
-                        <div class="timeline-content">
-                            <div class="timeline-title">All done for today!</div>
-                            <div>Great job completing your schedule! 🌟</div>
-                        </div>
-                        <span class="timeline-emoji">✅</span>
-                    </div>`;
-                return;
-            }
-
-            upcoming.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'timeline-item';
-                const isStudy = isStudyTask(item);
-                div.innerHTML = `
-                    <span class="timeline-time">${item.time}</span>
-                    <div class="timeline-content">
-                        <div class="timeline-title">${item.title}</div>
-                        <div>${item.description}${isStudy && item.duration ? ` (${item.duration} min)` : ''}</div>
-                    </div>
-                    <span class="timeline-emoji">${item.emoji || '📅'}</span>
-                `;
-                summary.appendChild(div);
-            });
-        }
-
-        // Notification
-        function showNotification(message) {
-            elements.notification.textContent = message;
-            elements.notification.classList.add('show');
-            setTimeout(() => elements.notification.classList.remove('show'), 3000);
-        }
-
-        // Reminder system
-        function startReminderSystem() {
-            setInterval(() => {
+                if (!Utils.checkOverlap(appState.reminders, reminder)) {
+                    appState.reminders.push(reminder);
+                    appState.reminders.sort((a, b) => a.time.localeCompare(b.time));
+                    UI.displayReminders();
+                    Persistence.save();
+                    DOM.get('customReminderTime').value = '';
+                    DOM.get('customReminderText').value = '';
+                    DOM.get('customReminderDuration').value = '';
+                    UI.notify('✅ Reminder/task added!');
+                } else {
+                    UI.notify('⚠️ Task overlaps with another reminder.');
+                }
+            },
+            check: () => {
                 const now = new Date();
                 const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
                 const reminder = appState.reminders.find(r => r.time === currentTime && !r.completed);
-                if (reminder) showNotification(`🔔 ${reminder.message}`);
-            }, 60000);
-        }
+                if (reminder) UI.notify(`🔔 ${reminder.message}`);
+            }
+        };
 
-        // Start app
-        document.addEventListener('DOMContentLoaded', initApp);
+        // Profile
+        const Profile = {
+            changeAvatar: emoji => {
+                appState.user.avatar = emoji;
+                UI.update();
+                Persistence.save();
+                UI.notify(`🎭 Avatar changed to ${emoji}!`);
+            },
+            save: () => {
+                const goals = {
+                    dailyStudy: parseInt(DOM.get('dailyStudyGoal').value) || 3,
+                    weeklyExercise: parseInt(DOM.get('weeklyExerciseGoal').value) || 4,
+                    sleep: parseInt(DOM.get('sleepGoal').value) || 8,
+                    dailyHobby: parseInt(DOM.get('dailyHobbyGoal').value) || 1
+                };
+                if (goals.dailyStudy < 1 || goals.dailyStudy > 12 ||
+                    goals.weeklyExercise < 1 || goals.weeklyExercise > 7 ||
+                    goals.sleep < 6 || goals.sleep > 12 ||
+                    goals.dailyHobby < 1 || goals.dailyHobby > 4) {
+                    return UI.notify('⚠️ Invalid goal values.');
+                }
+                appState.user.goals = goals;
+                UI.update();
+                Persistence.save();
+                UI.notify('💾 Goals saved!');
+            }
+        };
+
+        // Achievements
+        const Achievements = {
+            update: () => {
+                const achievements = [];
+                if (appState.user.schedulesCreated >= 1) achievements.push({ title: 'First Schedule', description: 'Created your first schedule!', emoji: '📅' });
+                if (appState.user.streak >= 3) achievements.push({ title: 'Streak Master', description: '3-day streak!', emoji: '🔥' });
+                if (appState.user.totalTasksCompleted >= 10) achievements.push({ title: 'Task Crusher', description: 'Completed 10 tasks!', emoji: '💪' });
+                if (appState.user.level >= 2) achievements.push({ title: 'Rising Star', description: 'Reached level 2!', emoji: '⭐' });
+                if (appState.stats.studyTime >= appState.user.goals.dailyStudy) achievements.push({ title: 'Study Star', description: 'Met your daily study goal!', emoji: '📚' });
+                if (appState.stats.hobbyTime >= appState.user.goals.dailyHobby) achievements.push({ title: 'Hobby Hero', description: 'Met your daily hobby goal!', emoji: '🎭' });
+                appState.achievements = achievements;
+                Achievements.display();
+                Persistence.save();
+            },
+            display: () => {
+                const achievementsList = DOM.get('achievementsList');
+                achievementsList.innerHTML = appState.achievements.length ? '' : '<p style="color: var(--text-secondary); font-style: italic;">Complete tasks to unlock achievements! 🎯</p>';
+
+                appState.achievements.forEach(achievement => {
+                    const div = document.createElement('div');
+                    div.style = 'padding: 10px; margin: 5px 0; background: var(--primary); border-radius: 8px;';
+                    div.innerHTML = `<span style="font-size: 1.5rem; margin-right: 10px;">${achievement.emoji}</span> <strong>${achievement.title}</strong>: ${achievement.description}`;
+                    achievementsList.appendChild(div);
+                });
+            }
+        };
+
+        // Event listeners
+        const Events = {
+            setup: () => {
+                DOM.queryAll(`.${DOM.elements.navBtns}`).forEach(btn => btn.addEventListener('click', () => UI.showPage(btn.dataset.page)));
+                DOM.queryAll(`.${DOM.elements.themeBtns}`).forEach(btn => btn.addEventListener('click', () => UI.setTheme(btn.dataset.theme)));
+                DOM.get(DOM.elements.scheduleForm).addEventListener('submit', Schedule.generate);
+                DOM.get(DOM.elements.saveScheduleBtn).addEventListener('click', Schedule.save);
+                DOM.get(DOM.elements.addReminderBtn).addEventListener('click', Reminders.add);
+                DOM.get(DOM.elements.saveProfileBtn).addEventListener('click', Profile.save);
+                DOM.queryAll(DOM.elements.avatarBtns).forEach(btn => btn.addEventListener('click', () => Profile.changeAvatar(btn.dataset.avatar)));
+                DOM.get(DOM.elements.createScheduleBtn).addEventListener('click', () => UI.showPage('scheduler'));
+            }
+        };
+
+        // Initialize app
+        const init = () => {
+            Persistence.load();
+            Events.setup();
+            State.resetDaily();
+            UI.update();
+            setInterval(Reminders.check, 60000);
+            UI.notify('👋 Welcome to Wakhty!');
+        };
+
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
