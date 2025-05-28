@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Wakhty - Optimize your daily routine and track your progress">
+    <title>Wakhty - Daily Routine Optimizer</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #f59e0b;
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --accent: #10b981;
+            --danger: #ef4444;
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #e2e8f0;
+            --bg-card: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+        }
+
+        [data-theme="neon"] {
+            --primary: #ff0080;
+            --secondary: #00ff80;
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a0a1a;
+            --bg-card: #2a1a2a;
+            --accent: #80ff00;
+        }
+
+        [data-theme="pastel"] {
+            --primary: #a78bfa;
+            --secondary: #fbbf24;
+            --bg-primary: #fef3f2;
+            --bg-secondary: #fdf4ff;
+            --bg-card: #ffffff;
+            --text-primary: #4c1d95;
+            --text-secondary: #7c3aed;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            margin: 0;
+            transition: all 0.3s ease;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .theme-selector {
+            display: flex;
+            gap: 10px;
+        }
+
+        .theme-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid var(--text-secondary);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .theme-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .theme-btn.active {
+            border-color: var(--primary);
+            border-width: 3px;
+        }
+
+        .theme-btn.dark { background: linear-gradient(45deg, #0f172a, #1e293b); }
+        .theme-btn.light { background: linear-gradient(45deg, #f8fafc, #e2e8f0); }
+        .theme-btn.neon { background: linear-gradient(45deg, #ff0080, #00ff80); }
+        .theme-btn.pastel { background: linear-gradient(45deg, #a78bfa, #fbbf24); }
+
+        .nav {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            padding: 12px 24px;
+            background: var(--bg-card);
+            border: none;
+            border-radius: 12px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .nav-btn:hover,
+        .nav-btn.active {
+            background: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .welcome-card {
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin: 0 auto 20px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .input-group input,
+        .input-group select,
+        .input-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--bg-secondary);
+            border-radius: 8px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus,
+        .input-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 16px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-success {
+            background: var(--accent);
+            color: white;
+        }
+
+        .timeline {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+            position: relative;
+        }
+
+        .timeline-item.completed {
+            border-left-color: var(--accent);
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.2), rgba(255, 255, 255, 0.1));
+        }
+
+        .timeline-item.completed .timeline-title {
+            text-decoration: line-through;
+        }
+
+        .timeline-time {
+            font-weight: 700;
+            color: var(--primary);
+            min-width: 80px;
+            margin-right: 20px;
+        }
+
+        .timeline-content {
+            flex: 1;
+        }
+
+        .timeline-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .timeline-emoji {
+            font-size: 1.5rem;
+            margin-left: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .streak-counter {
+            background: linear-gradient(45deg, var(--accent), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-size: 3rem;
+            font-weight: 800;
+        }
+
+        .reminder-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.5s ease;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--accent);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transform: translateX(100%);
+            transition: transform 0.3s;
+            z-index: 1001;
+            max-width: 300px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .task-checkbox {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 10px; }
+            .header { flex-direction: column; gap: 20px; }
+            .nav { justify-content: center; }
+            .stats-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+            .timeline-item { flex-direction: column; text-align: center; }
+            .timeline-time { margin-right: 0; margin-bottom: 10px; }
+            .task-checkbox { position: static; margin-top: 10px; }
+        }
+    </style>
+</head>
+<body data-theme="dark">
+    <div class="container">
+        <header class="header">
+            <h1 class="logo">⚡ Wakhty</h1>
+            <div class="theme-selector" role="radiogroup" aria-label="Theme selection">
+                <button class="theme-btn dark active" data-theme="dark" aria-label="Dark theme"></button>
+                <button class="theme-btn light" data-theme="light" aria-label="Light theme"></button>
+                <button class="theme-btn neon" data-theme="neon" aria-label="Neon theme"></button>
+                <button class="theme-btn pastel" data-theme="pastel" aria-label="Pastel theme"></button>
+            </div>
+        </header>
+
+        <nav class="nav" role="navigation">
+            <button class="nav-btn active" data-page="home" aria-label="Home page">🏠 Home</button>
+            <button class="nav-btn" data-page="scheduler" aria-label="Scheduler page">📅 Scheduler</button>
+            <button class="nav-btn" data-page="reminders" aria-label="Reminders page">🔔 Reminders</button>
+            <button class="nav-btn" data-page="progress" aria-label="Progress page">📊 Progress</button>
+            <button class="nav-btn" data-page="profile" aria-label="Profile page">👤 Profile</button>
+        </nav>
+
+        <div id="home" class="page active">
+            <div class="welcome-card card">
+                <div class="avatar" id="userAvatar">🎯</div>
+                <h2 id="welcomeText">Welcome back, Student!</h2>
+                <p>Level <span id="userLevel">1</span> • <span id="userXP">0</span> XP</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-number streak-counter" id="currentStreak">0</span>
+                    <div>Day Streak 🔥</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="tasksCompleted">0</span>
+                    <div>Tasks Done Today ✅</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="focusScore">0</span>
+                    <div>Focus Score 🎯</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="timeSpent">0h</span>
+                    <div>Study Time Today 📚</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Today's Schedule</h3>
+                <div id="todaysSummary">
+                    <div class="timeline-item">
+                        <span class="timeline-time">--:--</span>
+                        <div class="timeline-content">
+                            <div class="timeline-title">No schedule created yet</div>
+                            <div>Create your first schedule to get started! 🚀</div>
+                        </div>
+                        <span class="timeline-emoji">📅</span>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="createScheduleBtn" data-page="scheduler">🚀 Create My Schedule</button>
+            </div>
+        </div>
+
+        <div id="scheduler" class="page">
+            <div class="card">
+                <h2>📅 Create Your Perfect Day</h2>
+                <form id="scheduleForm" novalidate>
+                    <div class="input-group">
+                        <label for="userName">Your Name</label>
+                        <input type="text" id="userName" placeholder="Enter your name" required>
+                    </div>
+                    <div class="input-group">
+                        <label>School Schedule</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="time" id="schoolStart" value="08:00" required>
+                            <input type="time" id="schoolEnd" value="15:00" required>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Sleep Schedule</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="time" id="bedTime" value="22:00" required>
+                            <input type="time" id="wakeTime" value="07:00" required>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="studyHours">Study Goals (hours per day)</label>
+                        <input type="number" id="studyHours" min="1" max="8" value="2" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="subjects">Study Subjects (comma-separated)</label>
+                        <input type="text" id="subjects" placeholder="Math, Science, History" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Exercise Time</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="time" id="gymTime" value="16:00">
+                            <input type="number" id="gymDuration" min="30" max="180" value="60" placeholder="Minutes">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="hobbies">Hobbies & Personal Goals</label>
+                        <textarea id="hobbies" rows="3" placeholder="Reading, music, art..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">✨ Generate My Schedule!</button>
+                </form>
+            </div>
+            <div id="generatedSchedule" class="timeline" style="display: none;">
+                <h3>🎯 Your Optimized Schedule</h3>
+                <div id="scheduleTimeline"></div>
+                <button class="btn btn-success" id="saveScheduleBtn">💾 Save This Schedule</button>
+            </div>
+        </div>
+
+        <div id="reminders" class="page">
+            <div class="card">
+                <h3>Add Custom Reminder or Task</h3>
+                <div class="input-group">
+                    <label for="customReminderTime">Time</label>
+                    <input type="time" id="customReminderTime">
+                </div>
+                <div class="input-group">
+                    <label for="customReminderText">Message/Task</label>
+                    <input type="text" id="customReminderText" placeholder="e.g., Study Physics or Drink Water">
+                </div>
+                <div class="input-group">
+                    <label for="customReminderDuration">Duration (minutes, optional for study tasks)</label>
+                    <input type="number" id="customReminderDuration" min="5" max="240" placeholder="e.g., 30">
+                </div>
+                <button class="btn btn-primary" id="addReminderBtn">➕ Add Reminder/Task</button>
+            </div>
+            <div class="card">
+                <h3>Today's Reminders & Tasks</h3>
+                <div id="remindersList">
+                    <p style="color: var(--text-secondary); font-style: italic;">Create a schedule or add reminders! 📅</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="progress" class="page">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-number" id="progressStreak">0</span>
+                    <div>Day Streak 🔥</div>
+                    <div class="progress-bar"><div class="progress-fill" id="streakProgress" style="width: 0%"></div></div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="weeklyCompletion">0%</span>
+                    <div>Weekly Completion 📈</div>
+                    <div class="progress-bar"><div class="progress-fill" id="weeklyProgress" style="width: 0%"></div></div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>✅ Completed Tasks History</h3>
+                <div id="completedTasksList">
+                    <p style="color: var(--text-secondary); font-style: italic;">No tasks completed yet! 📅</p>
+                </div>
+            </div>
+            <div class="card">
+                <h3>🏆 Achievements</h3>
+                <div id="achievementsList">
+                    <p style="color: var(--text-secondary); font-style: italic;">Complete tasks to unlock achievements! 🎯</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="profile" class="page">
+            <div class="card">
+                <h2>👤 Your Profile</h2>
+                <div style="text-align: center;">
+                    <div class="avatar" style="width: 120px; height: 120px; font-size: 3rem;">
+                        <span id="profileAvatar">🎯</span>
+                    </div>
+                    <h3 id="profileName">Student</h3>
+                    <p>Level <span id="profileLevel">1</span> • <span id="profileXP">0</span> XP</p>
+                </div>
+            </div>
+            <div class="card">
+                <h3>🎭 Choose Your Avatar</h3>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;" role="radiogroup" aria-label="Avatar selection">
+                    <button class="avatar" style="width: 50px; height: 50px; cursor: pointer;" data-avatar="🎯" aria-label="Target avatar">🎯</button>
+                    <button class="avatar" style="width: 50px; height: 50px; cursor: pointer;" data-avatar="🚀" aria-label="Rocket avatar">🚀</button>
+                    <button class="avatar" style="width: 50px; height: 50px; cursor: pointer;" data-avatar="⚡" aria-label="Lightning avatar">⚡</button>
+                    <button class="avatar" style="width: 50px; height: 50px; cursor: pointer;" data-avatar="🔥" aria-label="Fire avatar">🔥</button>
+                </div>
+            </div>
+            <div class="card">
+                <h3>📈 Personal Goals</h3>
+                <div class="input-group">
+                    <label for="dailyStudyGoal">Daily Study Goal (hours)</label>
+                    <input type="number" id="dailyStudyGoal" min="1" max="12" value="3">
+                </div>
+                <div class="input-group">
+                    <label for="weeklyExerciseGoal">Weekly Exercise Goal (sessions)</label>
+                    <input type="number" id="weeklyExerciseGoal" min="1" max="7" value="4">
+                </div>
+                <div class="input-group">
+                    <label for="sleepGoal">Sleep Goal (hours)</label>
+                    <input type="number" id="sleepGoal" min="6" max="12" value="8">
+                </div>
+                <button class="btn btn-primary" id="saveProfileBtn">💾 Save Goals</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification" role="alert"></div>
+
+    <script>
+        // State management
+        let appState = {
+            user: {
+                name: 'Student',
+                avatar: '🎯',
+                level: 1,
+                xp: 0,
+                streak: 0,
+                theme: 'dark',
+                schedulesCreated: 0,
+                totalTasksCompleted: 0,
+                goals: { dailyStudy: 3, weeklyExercise: 4, sleep: 8 }
+            },
+            schedule: [],
+            completedTasks: [],
+            reminders: [],
+            stats: {
+                tasksCompletedToday: 0,
+                focusScore: 0,
+                studyTime: 0,
+                lastReviewDate: null,
+                lastStudyHours: 0
+            },
+            achievements: []
+        };
+
+        // DOM elements
+        const elements = {
+            navBtns: document.querySelectorAll('.nav-btn'),
+            pages: document.querySelectorAll('.page'),
+            themeBtns: document.querySelectorAll('.theme-btn'),
+            scheduleForm: document.getElementById('scheduleForm'),
+            saveScheduleBtn: document.getElementById('saveScheduleBtn'),
+            addReminderBtn: document.getElementById('addReminderBtn'),
+            saveProfileBtn: document.getElementById('saveProfileBtn'),
+            avatarBtns: document.querySelectorAll('[data-avatar]'),
+            notification: document.getElementById('notification'),
+            createScheduleBtn: document.getElementById('createScheduleBtn')
+        };
+
+        // Utility: Debounce function
+        function debounce(func, wait) {
+            let timeout;
+            return function (...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func(...args), wait);
+            };
+        }
+
+        // Utility: Check if task is study-related
+        function isStudyTask(task) {
+            if (task.type === 'study') return true;
+            const title = task.title.toLowerCase();
+            return title.includes('study') || title.includes('studying') || title.includes('styng');
+        }
+
+        // Persistence: Save state to localStorage
+        function saveState(immediate = false) {
+            try {
+                const criticalState = {
+                    user: appState.user,
+                    schedule: appState.schedule,
+                    completedTasks: appState.completedTasks,
+                    stats: appState.stats
+                };
+                localStorage.setItem('wakhtyState', JSON.stringify(criticalState));
+                localStorage.setItem('wakhtyStateFull', JSON.stringify(appState));
+            } catch (error) {
+                console.error('Save error:', error);
+                if (error.name === 'QuotaExceededError') {
+                    appState.achievements = appState.achievements.slice(-5);
+                    appState.reminders = appState.reminders.slice(-10);
+                    try {
+                        localStorage.setItem('wakhtyState', JSON.stringify({
+                            user: appState.user,
+                            schedule: appState.schedule,
+                            completedTasks: appState.completedTasks,
+                            stats: appState.stats
+                        }));
+                        showNotification('⚠️ Storage full, saved critical data only.');
+                    } catch (e) {
+                        showNotification('⚠️ Unable to save data.');
+                    }
+                } else {
+                    showNotification('⚠️ Failed to save data.');
+                }
+            }
+        }
+
+        const debouncedSave = debounce(saveState, 500);
+
+        // Persistence: Load state from localStorage
+        function loadState() {
+            try {
+                const savedState = localStorage.getItem('wakhtyState') || localStorage.getItem('wakhtyStateFull');
+                if (savedState) {
+                    appState = JSON.parse(savedState);
+                    appState.user = { ...appState.user, goals: appState.user.goals || { dailyStudy: 3, weeklyExercise: 4, sleep: 8 } };
+                    appState.stats = { 
+                        ...appState.stats, 
+                        tasksCompletedToday: appState.stats.tasksCompletedToday || 0, 
+                        focusScore: appState.stats.focusScore || 0, 
+                        studyTime: appState.stats.studyTime || 0, 
+                        lastReviewDate: appState.stats.lastReviewDate || null,
+                        lastStudyHours: appState.stats.lastStudyHours || 0
+                    };
+                    appState.schedule = appState.schedule || [];
+                    appState.completedTasks = appState.completedTasks || [];
+                    appState.reminders = appState.reminders || [];
+                    appState.achievements = appState.achievements || [];
+                }
+            } catch (error) {
+                console.error('Load error:', error);
+                showNotification('⚠️ Failed to load data. Using defaults.');
+            }
+        }
+
+        // Check for daily reset
+        function checkDailyReset() {
+            const today = new Date().toDateString();
+            if (appState.stats.lastReviewDate !== today) {
+                appState.stats.tasksCompletedToday = 0;
+                appState.stats.focusScore = 0;
+                appState.stats.studyTime = 0;
+                appState.stats.lastReviewDate = today;
+                saveState(true);
+            }
+        }
+
+        // Initialize app
+        function initApp() {
+            loadState();
+            setupEventListeners();
+            checkDailyReset();
+            updateAllDisplays();
+            startReminderSystem();
+            showNotification('👋 Welcome to Wakhty!');
+        }
+
+        // Event listeners
+        function setupEventListeners() {
+            elements.navBtns.forEach(btn => btn.addEventListener('click', () => showPage(btn.dataset.page)));
+            elements.themeBtns.forEach(btn => btn.addEventListener('click', () => setTheme(btn.dataset.theme)));
+            elements.scheduleForm.addEventListener('submit', generateSchedule);
+            elements.saveScheduleBtn.addEventListener('click', saveSchedule);
+            elements.addReminderBtn.addEventListener('click', addCustomReminder);
+            elements.saveProfileBtn.addEventListener('click', saveProfile);
+            elements.avatarBtns.forEach(btn => btn.addEventListener('click', () => changeAvatar(btn.dataset.avatar)));
+            elements.createScheduleBtn.addEventListener('click', () => showPage('scheduler'));
+        }
+
+        // Navigation
+        function showPage(pageId) {
+            elements.navBtns.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.page === pageId);
+                btn.setAttribute('aria-current', btn.dataset.page === pageId ? 'page' : 'false');
+            });
+            elements.pages.forEach(page => page.classList.toggle('active', page.id === pageId));
+            saveState();
+        }
+
+        // Theme
+        function setTheme(theme) {
+            document.body.setAttribute('data-theme', theme);
+            appState.user.theme = theme;
+            elements.themeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.theme === theme));
+            saveState(true);
+            showNotification(`🎨 Theme set to ${theme}!`);
+        }
+
+        // Schedule generation
+        function generateSchedule(e) {
+            e.preventDefault();
+            const formData = {
+                userName: document.getElementById('userName').value.trim(),
+                schoolStart: document.getElementById('schoolStart').value,
+                schoolEnd: document.getElementById('schoolEnd').value,
+                bedTime: document.getElementById('bedTime').value,
+                wakeTime: document.getElementById('wakeTime').value,
+                studyHours: parseInt(document.getElementById('studyHours').value),
+                subjects: document.getElementById('subjects').value.split(',').map(s => s.trim()).filter(s => s),
+                gymTime: document.getElementById('gymTime').value,
+                gymDuration: parseInt(document.getElementById('gymDuration').value) || 60,
+                hobbies: document.getElementById('hobbies').value.trim()
+            };
+
+            if (!formData.userName) return showNotification('⚠️ Please enter your name.');
+            if (!formData.subjects.length) return showNotification('⚠️ Please enter at least one subject.');
+            if (formData.studyHours < 1 || formData.studyHours > 8) return showNotification('⚠️ Study hours must be 1-8.');
+            if (formData.gymDuration < 30 || formData.gymDuration > 180) return showNotification('⚠️ Exercise duration must be 30-180 minutes.');
+            if (formData.schoolStart >= formData.schoolEnd) return showNotification('⚠️ School end must be after start.');
+            if (formData.bedTime <= formData.wakeTime) return showNotification('⚠️ Bed time must be after wake time.');
+
+            appState.user.name = formData.userName;
+            appState.stats.lastStudyHours = formData.studyHours;
+            appState.schedule = createOptimizedSchedule(formData);
+            displaySchedule();
+            updateAllDisplays();
+            saveState(true);
+            showNotification('🎯 Schedule generated!');
+        }
+
+        function createOptimizedSchedule(data) {
+            const schedule = [];
+            const addTimeSlot = (time, title, description, emoji, type = 'general') => {
+                const duration = type === 'study' ? (data.studyHours * 60 / data.subjects.length) : (type === 'exercise' ? data.gymDuration : 0);
+                schedule.push({ time, title, description, completed: false, emoji, type, duration });
+            };
+
+            addTimeSlot(data.wakeTime, 'Wake Up', 'Morning routine', '☀️');
+            addTimeSlot(addMinutes(data.wakeTime, 30), 'Breakfast', 'Fuel up!', '🍳');
+            addTimeSlot(data.schoolStart, 'School', 'Learn and focus!', '🏫');
+            addTimeSlot(data.schoolEnd, 'School Ends', 'Great job!', '✅');
+            addTimeSlot(addMinutes(data.schoolEnd, 15), 'Lunch', 'Recharge', '🍴');
+            if (data.gymTime) addTimeSlot(data.gymTime, 'Exercise', 'Stay active!', '🏃‍♀️', 'exercise');
+
+            const studyStart = addMinutes(data.gymTime || data.schoolEnd, data.gymTime ? data.gymDuration : 30);
+            const sessionDuration = Math.max(30, (data.studyHours * 60) / data.subjects.length);
+            data.subjects.forEach((subject, i) => {
+                const sessionTime = addMinutes(studyStart, i * (sessionDuration + 15));
+                addTimeSlot(sessionTime, `Study: ${subject}`, `Focus on ${subject}`, '📖', 'study');
+                if (i < data.subjects.length - 1) {
+                    addTimeSlot(addMinutes(sessionTime, sessionDuration), 'Break', 'Short rest', '☕', 'break');
+                }
+            });
+
+            const dinnerTime = addMinutes(studyStart, data.studyHours * 60 + 30);
+            addTimeSlot(dinnerTime, 'Dinner', 'Enjoy your meal!', '🍽️');
+            if (data.hobbies) addTimeSlot(addMinutes(dinnerTime, 60), 'Hobbies', data.hobbies, '🎭', 'hobby');
+            addTimeSlot(addMinutes(data.bedTime, -30), 'Wind Down', 'Relax', '🌙');
+            addTimeSlot(data.bedTime, 'Bedtime', 'Sleep well!', '🛌');
+
+            return schedule.sort((a, b) => a.time.localeCompare(b.time));
+        }
+
+        function addMinutes(time, minutes) {
+            try {
+                const [hrs, mins] = time.split(':').map(Number);
+                if (isNaN(hrs) || isNaN(mins)) throw new Error('Invalid time');
+                const totalMins = hrs * 60 + mins + minutes;
+                const newHrs = Math.floor(totalMins / 60) % 24;
+                const newMins = totalMins % 60;
+                return `${newHrs.toString().padStart(2, '0')}:${newMins.toString().padStart(2, '0')}`;
+            } catch (error) {
+                console.error('addMinutes error:', error);
+                return time;
+            }
+        }
+
+        // Display schedule
+        function displaySchedule() {
+            const timeline = document.getElementById('scheduleTimeline');
+            const generatedSchedule = document.getElementById('generatedSchedule');
+            timeline.innerHTML = '';
+
+            appState.schedule.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = `timeline-item ${item.completed ? 'completed' : ''}`;
+                const isStudy = isStudyTask(item);
+                div.innerHTML = `
+                    <span class="timeline-time">${item.time}</span>
+                    <div class="timeline-content">
+                        <div class="timeline-title">${item.title}</div>
+                        <div>${item.description}${isStudy && item.duration ? ` (${item.duration} min)` : ''}</div>
+                    </div>
+                    <span class="timeline-emoji">${item.emoji || '📅'}</span>
+                    <input type="checkbox" class="task-checkbox" data-index="${index}" ${item.completed ? 'checked' : ''} aria-label="Mark ${item.title} as completed">
+                `;
+                timeline.appendChild(div);
+            });
+
+            timeline.querySelectorAll('.task-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const index = parseInt(e.target.dataset.index);
+                    const wasCompleted = appState.schedule[index].completed;
+                    appState.schedule[index].completed = e.target.checked;
+                    const isStudy = isStudyTask(appState.schedule[index]);
+                    const duration = appState.schedule[index].duration || (isStudy ? 30 : 0); // Default 30 min for study tasks
+
+                    if (e.target.checked && !wasCompleted) {
+                        appState.stats.tasksCompletedToday++;
+                        appState.user.totalTasksCompleted++;
+                        appState.user.xp += 10;
+                        if (isStudy) {
+                            appState.stats.studyTime += duration / 60;
+                            appState.schedule[index].duration = duration; // Ensure duration is saved
+                        }
+                        appState.completedTasks.push({
+                            ...appState.schedule[index],
+                            completedAt: new Date().toISOString()
+                        });
+                        updateStreak();
+                        updateLevel();
+                        showNotification(`✅ ${appState.schedule[index].title} completed! +10 XP`);
+                    } else if (!e.target.checked && wasCompleted) {
+                        appState.stats.tasksCompletedToday = Math.max(0, appState.stats.tasksCompletedToday - 1);
+                        appState.user.totalTasksCompleted = Math.max(0, appState.user.totalTasksCompleted - 1);
+                        appState.user.xp = Math.max(0, appState.user.xp - 10);
+                        if (isStudy) {
+                            appState.stats.studyTime = Math.max(0, appState.stats.studyTime - (duration / 60));
+                        }
+                        appState.completedTasks = appState.completedTasks.filter(
+                            task => task.time !== appState.schedule[index].time || task.title !== appState.schedule[index].title
+                        );
+                        showNotification(`↩️ ${appState.schedule[index].title} unmarked`);
+                    }
+
+                    updateAllDisplays();
+                    updateAchievements();
+                    saveState(true);
+                });
+            });
+
+            generatedSchedule.style.display = 'block';
+        }
+
+        // Update streak
+        function updateStreak() {
+            const today = new Date().toDateString();
+            if (appState.stats.lastReviewDate !== today && appState.stats.tasksCompletedToday > 0) {
+                appState.user.streak++;
+                appState.stats.lastReviewDate = today;
+                showNotification(`🔥 Streak increased to ${appState.user.streak}!`);
+            }
+            saveState(true);
+        }
+
+        // Update level
+        function updateLevel() {
+            const newLevel = Math.floor(appState.user.xp / 100) + 1;
+            if (newLevel > appState.user.level) {
+                appState.user.level = newLevel;
+                showNotification(`🎉 Level up! Now level ${newLevel}!`);
+                saveState(true);
+            }
+        }
+
+        // Save schedule
+        function saveSchedule() {
+            appState.user.schedulesCreated++;
+            updateReminders();
+            updateAllDisplays();
+            updateAchievements();
+            saveState(true);
+            showNotification('💾 Schedule saved!');
+            showPage('home');
+        }
+
+        // Reminders
+        function updateReminders() {
+            appState.reminders = appState.schedule.map(item => ({
+                time: item.time,
+                message: item.title,
+                type: item.type,
+                duration: item.duration || 0
+            }));
+            displayReminders();
+            saveState(true);
+        }
+
+        function displayReminders() {
+            const remindersList = document.getElementById('remindersList');
+            remindersList.innerHTML = appState.reminders.length ? '' : '<p style="color: var(--text-secondary); font-style: italic;">Create a schedule or add reminders! 📅</p>';
+
+            appState.reminders.forEach((reminder, index) => {
+                const div = document.createElement('div');
+                div.className = `reminder-item ${reminder.completed ? 'completed' : ''}`;
+                const isStudy = isStudyTask({ title: reminder.message, type: reminder.type });
+                div.innerHTML = `
+                    <div>
+                        <div class="reminder-time">${reminder.time}</div>
+                        <div>${reminder.message}${isStudy && reminder.duration ? ` (${reminder.duration} min)` : ''}</div>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="checkbox" class="reminder-checkbox" data-index="${index}" ${reminder.completed ? 'checked' : ''} aria-label="Mark ${reminder.message} as completed">
+                        <button class="btn btn-primary" data-index="${index}" aria-label="Remove reminder for ${reminder.message}">❌</button>
+                    </div>
+                `;
+                remindersList.appendChild(div);
+            });
+
+            remindersList.querySelectorAll('.reminder-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const index = parseInt(e.target.dataset.index);
+                    const wasCompleted = appState.reminders[index].completed || false;
+                    appState.reminders[index].completed = e.target.checked;
+                    const isStudy = isStudyTask({ title: appState.reminders[index].message, type: appState.reminders[index].type });
+                    const duration = appState.reminders[index].duration || (isStudy ? 30 : 0);
+
+                    if (e.target.checked && !wasCompleted) {
+                        appState.stats.tasksCompletedToday++;
+                        appState.user.totalTasksCompleted++;
+                        appState.user.xp += 10;
+                        if (isStudy) {
+                            appState.stats.studyTime += duration / 60;
+                            appState.reminders[index].duration = duration;
+                        }
+                        appState.completedTasks.push({
+                            time: appState.reminders[index].time,
+                            title: appState.reminders[index].message,
+                            description: 'Custom task/reminder',
+                            emoji: isStudy ? '📖' : '📅',
+                            type: appState.reminders[index].type || (isStudy ? 'study' : 'custom'),
+                            duration,
+                            completedAt: new Date().toISOString()
+                        });
+                        updateStreak();
+                        updateLevel();
+                        showNotification(`✅ ${appState.reminders[index].message} completed! +10 XP`);
+                    } else if (!e.target.checked && wasCompleted) {
+                        appState.stats.tasksCompletedToday = Math.max(0, appState.stats.tasksCompletedToday - 1);
+                        appState.user.totalTasksCompleted = Math.max(0, appState.user.totalTasksCompleted - 1);
+                        appState.user.xp = Math.max(0, appState.user.xp - 10);
+                        if (isStudy) {
+                            appState.stats.studyTime = Math.max(0, appState.stats.studyTime - (duration / 60));
+                        }
+                        appState.completedTasks = appState.completedTasks.filter(
+                            task => task.time !== appState.reminders[index].time || task.title !== appState.reminders[index].message
+                        );
+                        showNotification(`↩️ ${appState.reminders[index].message} unmarked`);
+                    }
+
+                    updateAllDisplays();
+                    updateAchievements();
+                    saveState(true);
+                });
+            });
+
+            remindersList.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const index = parseInt(btn.dataset.index);
+                    if (appState.reminders[index].completed) {
+                        appState.stats.tasksCompletedToday = Math.max(0, appState.stats.tasksCompletedToday - 1);
+                        appState.user.totalTasksCompleted = Math.max(0, appState.user.totalTasksCompleted - 1);
+                        appState.user.xp = Math.max(0, appState.user.xp - 10);
+                        const isStudy = isStudyTask({ title: appState.reminders[index].message, type: appState.reminders[index].type });
+                        if (isStudy && appState.reminders[index].duration) {
+                            appState.stats.studyTime = Math.max(0, appState.stats.studyTime - (appState.reminders[index].duration / 60));
+                        }
+                    }
+                    appState.reminders.splice(index, 1);
+                    displayReminders();
+                    updateAllDisplays();
+                    saveState(true);
+                    showNotification('🗑️ Reminder/task removed!');
+                });
+            });
+        }
+
+        function addCustomReminder() {
+            const time = document.getElementById('customReminderTime').value;
+            const text = document.getElementById('customReminderText').value.trim();
+            const duration = parseInt(document.getElementById('customReminderDuration').value) || 0;
+            if (!time || !text) return showNotification('⚠️ Please enter time and message.');
+
+            const isStudy = isStudyTask({ title: text });
+            if (isStudy && duration && (duration < 5 || duration > 240)) {
+                return showNotification('⚠️ Study task duration must be 5-240 minutes.');
+            }
+
+            appState.reminders.push({
+                time,
+                message: text,
+                type: isStudy ? 'study' : 'custom',
+                duration: isStudy ? (duration || 30) : duration,
+                completed: false
+            });
+            appState.reminders.sort((a, b) => a.time.localeCompare(b.time));
+            displayReminders();
+            saveState(true);
+            document.getElementById('customReminderTime').value = '';
+            document.getElementById('customReminderText').value = '';
+            document.getElementById('customReminderDuration').value = '';
+            showNotification('✅ Reminder/task added!');
+        }
+
+        // Display schedule
+        function displaySchedule() {
+            const timeline = document.getElementById('scheduleTimeline');
+            const generatedSchedule = document.getElementById('generatedSchedule');
+            timeline.innerHTML = '';
+
+            appState.schedule.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = `timeline-item ${item.completed ? 'completed' : ''}`;
+                const isStudy = isStudyTask(item);
+                div.innerHTML = `
+                    <span class="timeline-time">${item.time}</span>
+                    <div class="timeline-content">
+                        <div class="timeline-title">${item.title}</div>
+                        <div>${item.description}${isStudy && item.duration ? ` (${item.duration} min)` : ''}</div>
+                    </div>
+                    <span class="timeline-emoji">${item.emoji || '📅'}</span>
+                    <input type="checkbox" class="task-checkbox" data-index="${index}" ${item.completed ? 'checked' : ''} aria-label="Mark ${item.title} as completed">
+                `;
+                timeline.appendChild(div);
+            });
+
+            timeline.querySelectorAll('.task-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const index = parseInt(e.target.dataset.index);
+                    const wasCompleted = appState.schedule[index].completed;
+                    appState.schedule[index].completed = e.target.checked;
+                    const isStudy = isStudyTask(appState.schedule[index]);
+                    const duration = appState.schedule[index].duration || (isStudy ? 30 : 0); // Default 30 min for study tasks
+
+                    if (e.target.checked && !wasCompleted) {
+                        appState.stats.tasksCompletedToday++;
+                        appState.user.totalTasksCompleted++;
+                        appState.user.xp += 10;
+                        if (isStudy) {
+                            appState.stats.studyTime += duration / 60;
+                            appState.schedule[index].duration = duration; // Ensure duration is saved
+                        }
+                        appState.completedTasks.push({
+                            ...appState.schedule[index],
+                            completedAt: new Date().toISOString()
+                        });
+                        updateStreak();
+                        updateLevel();
+                        showNotification(`✅ ${appState.schedule[index].title} completed! +10 XP`);
+                    } else if (!e.target.checked && wasCompleted) {
+                        appState.stats.tasksCompletedToday = Math.max(0, appState.stats.tasksCompletedToday - 1);
+                        appState.user.totalTasksCompleted = Math.max(0, appState.user.totalTasksCompleted - 1);
+                        appState.user.xp = Math.max(0, appState.user.xp - 10);
+                        if (isStudy) {
+                            appState.stats.studyTime = Math.max(0, appState.stats.studyTime - (duration / 60));
+                        }
+                        appState.completedTasks = appState.completedTasks.filter(
+                            task => task.time !== appState.schedule[index].time || task.title !== appState.schedule[index].title
+                        );
+                        showNotification(`↩️ ${appState.schedule[index].title} unmarked`);
+                    }
+
+                    updateAllDisplays();
+                    updateAchievements();
+                    saveState(true);
+                });
+            });
+
+            generatedSchedule.style.display = 'block';
+        }
+
+        // Profile
+        function changeAvatar(emoji) {
+            appState.user.avatar = emoji;
+            updateAllDisplays();
+            saveState(true);
+            showNotification(`🎭 Avatar changed to ${emoji}!`);
+        }
+
+        function saveProfile() {
+            const goals = {
+                dailyStudy: parseInt(document.getElementById('dailyStudyGoal').value) || 3,
+                weeklyExercise: parseInt(document.getElementById('weeklyExerciseGoal').value) || 4,
+                sleep: parseInt(document.getElementById('sleepGoal').value) || 8
+            };
+            if (goals.dailyStudy < 1 || goals.dailyStudy > 12 || goals.weeklyExercise < 1 || goals.weeklyExercise > 7 || goals.sleep < 6 || goals.sleep > 12) {
+                return showNotification('⚠️ Invalid goal values.');
+            }
+            appState.user.goals = goals;
+            updateAllDisplays();
+            saveState(true);
+            showNotification('💾 Goals saved!');
+        }
+
+        // Achievements
+        function updateAchievements() {
+            const achievements = [];
+            if (appState.user.schedulesCreated >= 1) achievements.push({ title: 'First Schedule', description: 'Created your first schedule!', emoji: '📅' });
+            if (appState.user.streak >= 3) achievements.push({ title: 'Streak Master', description: '3-day streak!', emoji: '🔥' });
+            if (appState.user.totalTasksCompleted >= 10) achievements.push({ title: 'Task Crusher', description: 'Completed 10 tasks!', emoji: '💪' });
+            if (appState.user.level >= 2) achievements.push({ title: 'Rising Star', description: 'Reached level 2!', emoji: '⭐' });
+            if (appState.stats.studyTime >= appState.user.goals.dailyStudy) achievements.push({ title: 'Study Star', description: 'Met your daily study goal!', emoji: '📚' });
+            appState.achievements = achievements;
+            displayAchievements();
+            saveState(true);
+        }
+
+        function displayAchievements() {
+            const achievementsList = document.getElementById('achievementsList');
+            achievementsList.innerHTML = appState.achievements.length ? '' : '<p style="color: var(--text-secondary); font-style: italic;">Complete tasks to unlock achievements! 🎯</p>';
+
+            appState.achievements.forEach(achievement => {
+                const div = document.createElement('div');
+                div.style = 'padding: 10px; margin: 5px 0; background: var(--primary); border-radius: 8px;';
+                div.innerHTML = `<span style="font-size: 1.5rem; margin-right: 10px;">${achievement.emoji}</span> <strong>${achievement.title}</strong>: ${achievement.description}`;
+                achievementsList.appendChild(div);
+            });
+        }
+
+        // Display completed tasks
+        function displayCompletedTasks() {
+            const completedTasksList = document.getElementById('completedTasksList');
+            completedTasksList.innerHTML = appState.completedTasks.length ? '' : '<p style="color: var(--text-secondary); font-style: italic;">No tasks completed yet! 📅</p>';
+
+            appState.completedTasks.forEach(task => {
+                const div = document.createElement('div');
+                div.className = 'timeline-item completed';
+                const isStudy = isStudyTask(task);
+                div.innerHTML = `
+                    <span class="timeline-time">${task.time}</span>
+                    <div class="timeline-content">
+                        <div class="timeline-title">${task.title}</div>
+                        <div>${task.description}${isStudy && task.duration ? ` (${task.duration} min)` : ''} (Completed: ${new Date(task.completedAt).toLocaleDateString()})</div>
+                    </div>
+                    <span class="timeline-emoji">${task.emoji || '✅'}</span>
+                `;
+                completedTasksList.appendChild(div);
+            });
+        }
+
+        // Update displays
+        function updateAllDisplays() {
+            document.getElementById('welcomeText').textContent = `Welcome back, ${appState.user.name}!`;
+            document.getElementById('userLevel').textContent = appState.user.level;
+            document.getElementById('userXP').textContent = appState.user.xp;
+            document.getElementById('userAvatar').textContent = appState.user.avatar;
+            document.getElementById('profileName').textContent = appState.user.name;
+            document.getElementById('profileLevel').textContent = appState.user.level;
+            document.getElementById('profileXP').textContent = appState.user.xp;
+            document.getElementById('profileAvatar').textContent = appState.user.avatar;
+            document.getElementById('currentStreak').textContent = appState.user.streak;
+            document.getElementById('tasksCompleted').textContent = appState.stats.tasksCompletedToday;
+            document.getElementById('focusScore').textContent = appState.stats.focusScore;
+            document.getElementById('timeSpent').textContent = `${appState.stats.studyTime.toFixed(1)}h`;
+            document.getElementById('progressStreak').textContent = appState.user.streak;
+            document.getElementById('weeklyCompletion').textContent = `${Math.min(100, appState.user.streak * 14.3).toFixed(0)}%`;
+            document.getElementById('streakProgress').style.width = `${Math.min(100, (appState.user.streak / 30) * 100)}%`;
+            document.getElementById('weeklyProgress').style.width = `${Math.min(100, appState.user.streak * 14.3)}%`;
+            document.getElementById('dailyStudyGoal').value = appState.user.goals.dailyStudy;
+            document.getElementById('weeklyExerciseGoal').value = appState.user.goals.weeklyExercise;
+            document.getElementById('sleepGoal').value = appState.user.goals.sleep;
+            document.body.setAttribute('data-theme', appState.user.theme);
+            elements.themeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.theme === appState.user.theme));
+
+            updateTodaysSummary();
+            displaySchedule();
+            displayReminders();
+            displayAchievements();
+            displayCompletedTasks();
+        }
+
+        // Today's summary
+        function updateTodaysSummary() {
+            const summary = document.getElementById('todaysSummary');
+            if (!appState.schedule.length) {
+                summary.innerHTML = `
+                    <div class="timeline-item">
+                        <span class="timeline-time">--:--</span>
+                        <div class="timeline-content">
+                            <div class="timeline-title">No schedule created yet</div>
+                            <div>Create your first schedule to get started! 🚀</div>
+                        </div>
+                        <span class="timeline-emoji">📅</span>
+                    </div>`;
+                return;
+            }
+
+            summary.innerHTML = '';
+            const now = new Date();
+            const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            const upcoming = appState.schedule.filter(item => item.time >= currentTime && !item.completed).slice(0, 3);
+
+            if (!upcoming.length) {
+                summary.innerHTML = `
+                    <div class="timeline-item">
+                        <span class="timeline-time">🎉</span>
+                        <div class="timeline-content">
+                            <div class="timeline-title">All done for today!</div>
+                            <div>Great job completing your schedule! 🌟</div>
+                        </div>
+                        <span class="timeline-emoji">✅</span>
+                    </div>`;
+                return;
+            }
+
+            upcoming.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'timeline-item';
+                const isStudy = isStudyTask(item);
+                div.innerHTML = `
+                    <span class="timeline-time">${item.time}</span>
+                    <div class="timeline-content">
+                        <div class="timeline-title">${item.title}</div>
+                        <div>${item.description}${isStudy && item.duration ? ` (${item.duration} min)` : ''}</div>
+                    </div>
+                    <span class="timeline-emoji">${item.emoji || '📅'}</span>
+                `;
+                summary.appendChild(div);
+            });
+        }
+
+        // Notification
+        function showNotification(message) {
+            elements.notification.textContent = message;
+            elements.notification.classList.add('show');
+            setTimeout(() => elements.notification.classList.remove('show'), 3000);
+        }
+
+        // Reminder system
+        function startReminderSystem() {
+            setInterval(() => {
+                const now = new Date();
+                const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+                const reminder = appState.reminders.find(r => r.time === currentTime && !r.completed);
+                if (reminder) showNotification(`🔔 ${reminder.message}`);
+            }, 60000);
+        }
+
+        // Start app
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
