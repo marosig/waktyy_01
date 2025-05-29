@@ -57,7 +57,7 @@
             color: var(--text-primary);
             min-height: 100vh;
             margin: 0;
-            transition: all 0.3s ease;
+            transition: background 0.3s ease, color 0.3s ease;
         }
 
         .container {
@@ -98,7 +98,8 @@
 
         .theme-btn:hover, .theme-btn:focus {
             transform: scale(1.1);
-            outline: none;
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
             box-shadow: 0 0 8px var(--primary);
         }
 
@@ -107,10 +108,10 @@
             border-width: 3px;
         }
 
-        .theme-btn[data-theme="dark"] { background: linear-gradient(45deg, #0f172a, #1e293b); }
-        .theme-btn[data-theme="light"] { background: linear-gradient(45deg, #f8fafc, #e2e8f0); }
-        .theme-btn[data-theme="white"] { background: linear-gradient(45deg, #ffffff, #f3f4f6); }
-        .theme-btn[data-theme="neon"] { background: linear-gradient(45deg, #1a1a2e, #e94560); }
+        .theme-btn[data-theme="dark"] { background: linear-gradient(45deg, var(--bg-primary), var(--bg-secondary)); }
+        .theme-btn[data-theme="light"] { background: linear-gradient(45deg, var(--bg-primary), var(--bg-secondary)); }
+        .theme-btn[data-theme="white"] { background: linear-gradient(45deg, var(--bg-primary), var(--bg-secondary)); }
+        .theme-btn[data-theme="neon"] { background: linear-gradient(45deg, var(--bg-primary), var(--text-primary)); }
 
         .nav {
             display: flex;
@@ -134,7 +135,8 @@
             background: var(--primary);
             transform: translateY(-2px);
             box-shadow: 0 10px 15px rgba(99, 102, 241, 0.3);
-            outline: none;
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
         }
 
         .page {
@@ -206,7 +208,7 @@
         }
 
         .input-group input:focus, .input-group textarea:focus {
-            outline: none;
+            outline: 2px solid var(--primary);
             border-color: var(--primary);
         }
 
@@ -249,7 +251,8 @@
         .btn-primary:hover, .btn-primary:focus {
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
-            outline: none;
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
         }
 
         .btn-success {
@@ -418,8 +421,15 @@
             .header { flex-direction: column; gap: 15px; }
             .nav { justify-content: center; }
             .stats-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
-            .timeline-item, .reminder-item { flex-direction: column; align-items: flex-start; }
-            .timeline-time { margin-right: 0; margin-bottom: 10px; }
+            .timeline-item, .reminder-item {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 20px;
+                gap: 10px;
+            }
+            .timeline-time, .reminder-time {
+                margin-bottom: 10px;
+            }
             .task-checkbox { position: static; margin-top: 10px; }
         }
     </style>
@@ -597,6 +607,7 @@
                 <h3>🎯 Your Schedule</h3>
                 <div id="scheduleTimeline"></div>
                 <button class="btn btn-success" id="saveScheduleBtn">💾 Save Schedule</button>
+                <button class="btn btn-primary" id="editScheduleBtn">✏️ Edit Schedule</button>
             </div>
         </div>
 
@@ -666,6 +677,8 @@
                     <button class="avatar" style="width: 50px; height: 50px; cursor: pointer;" data-avatar="🎯" aria-label="Target avatar">🎯</button>
                     <button class="avatar" style="width: 50px; height: 50px; cursor: pointer;" data-avatar="🚀" aria-label="Rocket avatar">🚀</button>
                     <button class="avatar" style="width: 50px; height: 50px; cursor: pointer;" data-avatar="⚡" aria-label="Lightning avatar">⚡</button>
+                    <button class="avatar" style="width: 50px; height: 50px; cursor: pointer;" data-avatar="🎓" aria-label="Graduate avatar">🎓</button>
+                    <button class="avatar" style="width: 50px; height: 50px; cursor: pointer;" data-avatar="🌟" aria-label="Star avatar">🌟</button>
                 </div>
             </div>
             <div class="card">
@@ -682,7 +695,7 @@
         </div>
     </div>
 
-    <div id="notification" class="notification" role="alert"></div>
+    <div id="notification" class="notification" role="alert" aria-live="polite"></div>
 
     <script>
         // State management
@@ -716,6 +729,7 @@
             quizNext: document.getElementById('quizNext'),
             quizFinish: document.getElementById('quizFinish'),
             saveScheduleBtn: document.getElementById('saveScheduleBtn'),
+            editScheduleBtn: document.getElementById('editScheduleBtn'),
             addReminderBtn: document.getElementById('addReminderBtn'),
             avatarBtns: document.querySelectorAll('[data-avatar]'),
             notification: document.getElementById('notification'),
@@ -727,8 +741,11 @@
         let currentQuizStep = 1;
         const quizData = {};
 
-        // Utility: Add minutes to time
+        // Utility functions
+        const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+
         const addMinutes = (time, minutes) => {
+            if (!time || !/^\d{2}:\d{2}$/.test(time)) return time;
             try {
                 const [hrs, mins] = time.split(':').map(Number);
                 if (isNaN(hrs) || isNaN(mins)) return time;
@@ -741,6 +758,14 @@
             }
         };
 
+        const timeToMinutes = time => {
+            if (!time || !/^\d{2}:\d{2}$/.test(time)) return 0;
+            const [hrs, mins] = time.split(':').map(Number);
+            return hrs * 60 + mins;
+        };
+
+        const sanitizeHTML = str => str.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
         // Persistence
         const saveState = () => {
             try {
@@ -750,10 +775,20 @@
                     reminders: appState.reminders.slice(-20),
                     tasks: appState.tasks.slice(-20),
                     completedTasks: appState.completedTasks.slice(-20),
-                    stats: appState.stats
+                    stats: appState.stats,
+                    quizData: quizData,
+                    currentQuizStep: currentQuizStep
                 }));
-            } catch {
-                showNotification('⚠️ Failed to save data');
+            } catch (e) {
+                if (e.name === 'QuotaExceededError') {
+                    showNotification('⚠️ Storage full! Clearing old data.');
+                    appState.completedTasks = appState.completedTasks.slice(-10);
+                    appState.reminders = appState.reminders.slice(-10);
+                    appState.tasks = appState.tasks.slice(-10);
+                    saveState();
+                } else {
+                    showNotification('⚠️ Failed to save data');
+                }
             }
         };
 
@@ -780,6 +815,9 @@
                         studyTime: parsed.stats?.studyTime || 0,
                         lastReviewDate: parsed.stats?.lastReviewDate || null
                     };
+                    Object.assign(quizData, parsed.quizData || {});
+                    currentQuizStep = parsed.currentQuizStep || 1;
+                    updateQuizProgress();
                 }
             } catch {
                 showNotification('⚠️ Failed to load data');
@@ -789,7 +827,11 @@
         // Daily reset
         const checkDailyReset = () => {
             const today = new Date().toDateString();
+            const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toDateString();
             if (appState.stats.lastReviewDate !== today) {
+                if (appState.stats.lastReviewDate !== yesterday && appState.stats.lastReviewDate) {
+                    appState.user.streak = 0;
+                }
                 appState.stats.tasksCompletedToday = 0;
                 appState.stats.studyTime = 0;
                 appState.stats.lastReviewDate = today;
@@ -799,30 +841,20 @@
             }
         };
 
-        // Clear all data except XP
-        const clearAllData = () => {
-            const currentXP = appState.user.xp;
-            appState.user = {
-                name: 'Student',
-                avatar: '🎯',
-                level: Math.floor(currentXP / 100) + 1,
-                xp: currentXP,
-                streak: appState.user.streak + 1,
-                theme: appState.user.theme,
-                hobbies: []
-            };
-            appState.schedule = [];
-            appState.reminders = [];
+        // Clear completed tasks
+        const clearCompletedTasks = () => {
+            if (!confirm('All tasks completed! Reset tasks and increase streak?')) return;
             appState.tasks = [];
+            appState.reminders = [];
             appState.completedTasks = [];
-            appState.stats = {
-                tasksCompletedToday: 15,
-                studyTime: 0,
-                lastReviewDate: new Date().toDateString()
-            };
+            appState.stats.tasksCompletedToday = 0;
+            appState.stats.studyTime = 0;
+            appState.stats.lastReviewDate = new Date().toDateString();
+            appState.user.streak++;
+            appState.user.level = Math.floor(appState.user.xp / 100) + 1;
             saveState();
             updateDisplays();
-            showNotification('🎉 All tasks completed! Data reset, streak +1! 🔥');
+            showNotification('🎉 All tasks completed! Tasks reset, streak +1! 🔥');
         };
 
         // Navigation
@@ -887,13 +919,23 @@
                 showNotification('⚠️ Choose your study vibe! 📚');
                 return false;
             }
-            if (step === 6 && !document.getElementById('quizSubjects').value.trim()) {
-                showNotification('⚠️ List at least one subject! 📖');
-                return false;
+            if (step === 6) {
+                const subjects = document.getElementById('quizSubjects').value.split(',').map(s => s.trim()).filter(s => s);
+                if (subjects.length === 0) {
+                    showNotification('⚠️ List at least one subject! 📖');
+                    return false;
+                }
             }
             if (step === 8 && (parseInt(document.getElementById('quizExerciseMins').value) || 0) < 30) {
                 showNotification('⚠️ Exercise needs at least 30 minutes! 💪');
                 return false;
+            }
+            if (step === 9) {
+                const hobbies = document.getElementById('quizHobbies').value.split(',').map(h => h.trim()).filter(h => h);
+                if (hobbies.length === 0) {
+                    showNotification('⚠️ List at least one hobby! 🎨');
+                    return false;
+                }
             }
             if (step === 10 && (parseInt(document.getElementById('quizHobbyMins').value) || 0) < 60) {
                 showNotification('⚠️ Hobbies need at least 60 minutes! 🎨');
@@ -916,6 +958,7 @@
             quizData.hobbyMins = parseInt(document.getElementById('quizHobbyMins').value) || 60;
             quizData.breakActivity = document.getElementById('quizBreakActivity').value.trim() || 'Chill';
             quizData.freeTimeActivity = document.getElementById('quizFreeTimeActivity').value.trim() || 'Relax';
+            saveState();
         };
 
         const resetQuiz = () => {
@@ -930,23 +973,75 @@
             updateQuizProgress();
         };
 
+        const editSchedule = () => {
+            showPage('scheduler');
+            if (appState.schedule.length) {
+                quizData.name = appState.user.name;
+                quizData.timePreference = appState.schedule.some(item => item.type === 'exercise' && item.time < '12:00') ? 'morning' : 'evening';
+                quizData.schoolStart = appState.schedule.find(item => item.title === 'School')?.time || '08:00';
+                quizData.schoolEnd = appState.schedule.find(item => item.title === 'School Ends')?.time || '15:00';
+                quizData.bedTime = appState.schedule.find(item => item.title === 'Bedtime')?.time || '22:00';
+                quizData.wakeTime = appState.schedule.find(item => item.title === 'Wake Up')?.time || '07:00';
+                quizData.studyIntensity = appState.schedule.find(item => item.type === 'study')?.duration === 30 ? 'chill' : appState.schedule.find(item => item.type === 'study')?.duration === 60 ? 'intense' : 'balanced';
+                quizData.subjects = appState.schedule.filter(item => item.type === 'study').map(item => item.title.replace('Study: ', ''));
+                quizData.exerciseType = appState.schedule.find(item => item.type === 'exercise')?.title || 'Exercise';
+                quizData.exerciseMins = appState.schedule.find(item => item.type === 'exercise')?.duration || 30;
+                quizData.hobbies = appState.user.hobbies;
+                quizData.hobbyMins = appState.schedule.find(item => item.type === 'hobby')?.duration || 60;
+                quizData.breakActivity = appState.schedule.find(item => item.type === 'break')?.description || 'Chill';
+                quizData.freeTimeActivity = appState.schedule.find(item => item.type === 'free')?.description || 'Relax';
+                document.getElementById('quizName').value = quizData.name;
+                document.getElementById('quizSchoolStart').value = quizData.schoolStart;
+                document.getElementById('quizSchoolEnd').value = quizData.schoolEnd;
+                document.getElementById('quizBedTime').value = quizData.bedTime;
+                document.getElementById('quizWakeTime').value = quizData.wakeTime;
+                document.getElementById('quizSubjects').value = quizData.subjects.join(', ');
+                document.getElementById('quizExerciseType').value = quizData.exerciseType;
+                document.getElementById('quizExerciseMins').value = quizData.exerciseMins;
+                document.getElementById('quizHobbies').value = quizData.hobbies.join(', ');
+                document.getElementById('quizHobbyMins').value = quizData.hobbyMins;
+                document.getElementById('quizBreakActivity').value = quizData.breakActivity;
+                document.getElementById('quizFreeTimeActivity').value = quizData.freeTimeActivity;
+                document.querySelectorAll('.radio-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.value === quizData.timePreference || btn.dataset.value === quizData.studyIntensity);
+                });
+                currentQuizStep = 1;
+                updateQuizProgress();
+            }
+        };
+
         // Schedule generation
         const generateSchedule = () => {
             collectQuizData();
+            const wakeTimeMins = timeToMinutes(quizData.wakeTime);
+            const bedTimeMins = timeToMinutes(quizData.bedTime);
+            const availableMins = bedTimeMins < wakeTimeMins ? (bedTimeMins + 1440 - wakeTimeMins) : (bedTimeMins - wakeTimeMins);
+            let totalMins = 0;
+
             const studyMins = quizData.studyIntensity === 'chill' ? 30 : quizData.studyIntensity === 'intense' ? 60 : 45;
+            totalMins += quizData.subjects.length * (studyMins + 10);
+            totalMins += quizData.exerciseMins + 10;
+            totalMins += quizData.hobbyMins + 10;
+            totalMins += 45;
+            totalMins += 45;
+
+            if (totalMins > availableMins) {
+                showNotification('⚠️ Schedule too long! Reduce study, exercise, or hobby time.');
+                return;
+            }
+
             const schedule = [];
             const addTimeSlot = (time, title, description, emoji, type = 'general', duration = 0) => {
-                schedule.push({ time, title, description, completed: false, emoji, type, duration });
+                schedule.push({ id: generateId(), time, title, description, completed: false, emoji, type, duration });
             };
 
-            addTimeSlot(quizData.wakeTime, 'Wake Up', 'Morning routine', '☀️');
+            let currentTime = quizData.wakeTime;
+            addTimeSlot(currentTime, 'Wake Up', 'Morning routine', '☀️');
             addTimeSlot(quizData.schoolStart, 'School', 'Learn and focus', '🏫');
             addTimeSlot(quizData.schoolEnd, 'School Ends', 'Great job', '✅');
-            addTimeSlot(addMinutes(quizData.schoolEnd, 15), 'Lunch', 'Recharge', '🍴', 'lunch', 45);
-
-            let currentTime = addMinutes(quizData.schoolEnd, 60);
-            addTimeSlot(currentTime, 'Short Break', quizData.breakActivity, '☕', 'break', 10);
-            currentTime = addMinutes(currentTime, 10);
+            currentTime = addMinutes(quizData.schoolEnd, 15);
+            addTimeSlot(currentTime, 'Lunch', 'Recharge', '🍴', 'lunch', 45);
+            currentTime = addMinutes(currentTime, 45);
 
             const isMorningPerson = quizData.timePreference === 'morning';
             if (isMorningPerson) {
@@ -980,6 +1075,11 @@
                 currentTime = addMinutes(currentTime, 10);
             }
 
+            if (timeToMinutes(currentTime) + 10 > timeToMinutes(quizData.bedTime)) {
+                showNotification('⚠️ Schedule exceeds bedtime! Adjust times.');
+                return;
+            }
+
             addTimeSlot(quizData.bedTime, 'Bedtime', 'Sleep well', '😴');
             appState.schedule = schedule.sort((a, b) => a.time.localeCompare(b.time));
             appState.tasks = appState.schedule.map(item => ({ ...item }));
@@ -994,81 +1094,97 @@
         const displaySchedule = () => {
             const timeline = document.getElementById('scheduleTimeline');
             const generatedSchedule = document.getElementById('generatedSchedule');
-            timeline.innerHTML = '';
-
             appState.schedule.forEach(item => {
-                const div = document.createElement('div');
-                div.className = `timeline-item ${item.completed ? 'completed' : ''}`;
-                const isStudy = item.type === 'study';
-                const isExercise = item.type === 'exercise';
-                const isHobby = item.type === 'hobby';
-                const isBreak = item.type === 'break';
-                const isFree = item.type === 'free';
-                const isLunch = item.type === 'lunch';
-                div.innerHTML = `
-                    <span class="timeline-time">${item.time}</span>
-                    <div class="timeline-content">
-                        <div class="timeline-title">${item.title}</div>
-                        <div>${item.description}${(isStudy || isExercise || isHobby || isBreak || isFree || isLunch) && item.duration ? ` (${item.duration} min)` : ''}</div>
-                    </div>
-                    <span class="timeline-emoji">${item.emoji}</span>
-                    <input type="checkbox" class="task-checkbox" data-time="${item.time}" data-title="${item.title}" ${item.completed ? 'checked' : ''} aria-label="Mark ${item.title} as completed">
-                `;
-                timeline.appendChild(div);
+                const existing = timeline.querySelector(`[data-id="${item.id}"]`);
+                if (existing) {
+                    existing.className = `timeline-item ${item.completed ? 'completed' : ''}`;
+                    existing.querySelector('.task-checkbox').checked = item.completed;
+                } else {
+                    const div = document.createElement('div');
+                    div.className = `timeline-item ${item.completed ? 'completed' : ''}`;
+                    div.dataset.id = item.id;
+                    const isStudy = item.type === 'study';
+                    const isExercise = item.type === 'exercise';
+                    const isHobby = item.type === 'hobby';
+                    const isBreak = item.type === 'break';
+                    const isFree = item.type === 'free';
+                    const isLunch = item.type === 'lunch';
+                    div.innerHTML = `
+                        <span class="timeline-time">${item.time}</span>
+                        <div class="timeline-content">
+                            <div class="timeline-title">${item.title}</div>
+                            <div>${item.description}${(isStudy || isExercise || isHobby || isBreak || isFree || isLunch) && item.duration ? ` (${item.duration} min)` : ''}</div>
+                        </div>
+                        <span class="timeline-emoji">${item.emoji}</span>
+                        <input type="checkbox" class="task-checkbox" data-id="${item.id}" ${item.completed ? 'checked' : ''} aria-label="Mark ${item.title} as completed">
+                    `;
+                    timeline.appendChild(div);
+                }
             });
-
             timeline.querySelectorAll('.task-checkbox').forEach(checkbox => {
+                checkbox.removeEventListener('change', handleTaskCompletion);
                 checkbox.addEventListener('change', e => handleTaskCompletion(e, 'schedule'));
             });
-
+            timeline.querySelectorAll('.timeline-item').forEach(el => {
+                if (!appState.schedule.some(t => t.id === el.dataset.id)) el.remove();
+            });
             generatedSchedule.style.display = 'block';
         };
 
         const displayTasks = () => {
             const tasksList = document.getElementById('tasksList');
-            tasksList.innerHTML = appState.tasks.length ? '' : '<p style="color: var(--text-secondary); font-style: italic;">No tasks yet! Create a schedule to start. 📅</p>';
-
+            if (appState.tasks.length === 0) {
+                tasksList.innerHTML = '<p style="color: var(--text-secondary); font-style: italic;">No tasks yet! Create a schedule to start. 📅</p>';
+                return;
+            }
             appState.tasks.forEach(item => {
-                const div = document.createElement('div');
-                div.className = `timeline-item ${item.completed ? 'completed' : ''}`;
-                const isStudy = item.type === 'study';
-                const isExercise = item.type === 'exercise';
-                const isHobby = item.type === 'hobby';
-                const isBreak = item.type === 'break';
-                const isFree = item.type === 'free';
-                const isLunch = item.type === 'lunch';
-                div.innerHTML = `
-                    <span class="timeline-time">${item.time}</span>
-                    <div class="timeline-content">
-                        <div class="timeline-title">${item.title}</div>
-                        <div>${item.description}${(isStudy || isExercise || isHobby || isBreak || isFree || isLunch) && item.duration ? ` (${item.duration} min)` : ''}</div>
-                    </div>
-                    <span class="timeline-emoji">${item.emoji}</span>
-                    <input type="checkbox" class="task-checkbox" data-time="${item.time}" data-title="${item.title}" ${item.completed ? 'checked' : ''} aria-label="Mark ${item.title} as completed">
-                `;
-                tasksList.appendChild(div);
+                const existing = tasksList.querySelector(`[data-id="${item.id}"]`);
+                if (existing) {
+                    existing.className = `timeline-item ${item.completed ? 'completed' : ''}`;
+                    existing.querySelector('.task-checkbox').checked = item.completed;
+                } else {
+                    const div = document.createElement('div');
+                    div.className = `timeline-item ${item.completed ? 'completed' : ''}`;
+                    div.dataset.id = item.id;
+                    const isStudy = item.type === 'study';
+                    const isExercise = item.type === 'exercise';
+                    const isHobby = item.type === 'hobby';
+                    const isBreak = item.type === 'break';
+                    const isFree = item.type === 'free';
+                    const isLunch = item.type === 'lunch';
+                    div.innerHTML = `
+                        <span class="timeline-time">${item.time}</span>
+                        <div class="timeline-content">
+                            <div class="timeline-title">${item.title}</div>
+                            <div>${item.description}${(isStudy || isExercise || isHobby || isBreak || isFree || isLunch) && item.duration ? ` (${item.duration} min)` : ''}</div>
+                        </div>
+                        <span class="timeline-emoji">${item.emoji}</span>
+                        <input type="checkbox" class="task-checkbox" data-id="${item.id}" ${item.completed ? 'checked' : ''} aria-label="Mark ${item.title} as completed">
+                    `;
+                    tasksList.appendChild(div);
+                }
             });
-
             tasksList.querySelectorAll('.task-checkbox').forEach(checkbox => {
+                checkbox.removeEventListener('change', handleTaskCompletion);
                 checkbox.addEventListener('change', e => handleTaskCompletion(e, 'tasks'));
+            });
+            tasksList.querySelectorAll('.timeline-item').forEach(el => {
+                if (!appState.tasks.some(t => t.id === el.dataset.id)) el.remove();
             });
         };
 
         const handleTaskCompletion = (e, source) => {
-            const time = e.target.dataset.time;
-            const title = e.target.dataset.title;
-            const wasCompleted = appState[source].find(t => t.time === time && t.title === title)?.completed;
+            const id = e.target.dataset.id;
+            const wasCompleted = appState[source].find(t => t.id === id)?.completed;
 
             appState[source].forEach(item => {
-                if (item.time === time && item.title === title) item.completed = e.target.checked;
+                if (item.id === id) item.completed = e.target.checked;
             });
 
             ['schedule', 'tasks', 'reminders'].forEach(list => {
                 if (list !== source) {
                     appState[list].forEach(item => {
-                        if (item.time === time && (item.title === title || item.message === title)) {
-                            item.completed = e.target.checked;
-                        }
+                        if (item.id === id) item.completed = e.target.checked;
                     });
                 }
             });
@@ -1076,7 +1192,7 @@
             if (e.target.checked && !wasCompleted) {
                 appState.stats.tasksCompletedToday++;
                 appState.user.xp += 10;
-                const task = appState[source].find(t => t.time === time && t.title === title);
+                const task = appState[source].find(t => t.id === id);
                 if (task?.type === 'study') {
                     appState.stats.studyTime += (task.duration || 45) / 60;
                 }
@@ -1086,22 +1202,20 @@
                 });
                 updateStreak();
                 updateLevel();
-                showNotification(`✅ ${title} completed! +10 XP`);
+                showNotification(`✅ ${task.title} completed! +10 XP`);
             } else if (!e.target.checked && wasCompleted) {
                 appState.stats.tasksCompletedToday = Math.max(0, appState.stats.tasksCompletedToday - 1);
                 appState.user.xp = Math.max(0, appState.user.xp - 10);
-                const task = appState[source].find(t => t.time === time && t.title === title);
+                const task = appState[source].find(t => t.id === id);
                 if (task?.type === 'study') {
                     appState.stats.studyTime = Math.max(0, appState.stats.studyTime - (task.duration || 45) / 60);
                 }
-                appState.completedTasks = appState.completedTasks.filter(
-                    t => !(t.time === time && t.title === title)
-                );
-                showNotification(`↩️ ${title} unmarked`);
+                appState.completedTasks = appState.completedTasks.filter(t => t.id !== id);
+                showNotification(`↩️ ${task.title} unmarked`);
             }
 
             if (appState.tasks.length && appState.tasks.every(task => task.completed)) {
-                clearAllData();
+                clearCompletedTasks();
             }
 
             updateDisplays();
@@ -1110,14 +1224,16 @@
 
         const saveSchedule = () => {
             appState.reminders = appState.schedule.map(item => ({
+                id: generateId(),
                 time: item.time,
                 message: item.title,
+                title: item.title,
                 type: item.type,
                 duration: item.duration || 0,
                 completed: item.completed,
                 emoji: item.emoji
             }));
-            appState.tasks = appState.schedule.map(item => ({ ...item }));
+            appState.tasks = appState.schedule.map(item => ({ ...item, id: generateId() }));
             displayReminders();
             displayTasks();
             updateDisplays();
@@ -1134,6 +1250,7 @@
             if (!time || !text) return showNotification('⚠️ Please enter time and task');
 
             const reminder = {
+                id: generateId(),
                 time,
                 message: text,
                 title: text,
@@ -1144,7 +1261,7 @@
             };
 
             appState.reminders.push(reminder);
-            appState.tasks.push({ ...reminder, description: 'Custom reminder' });
+            appState.tasks.push({ ...reminder, description: 'Custom reminder', id: generateId() });
             appState.reminders.sort((a, b) => a.time.localeCompare(b.time));
             appState.tasks.sort((a, b) => a.time.localeCompare(b.time));
             displayReminders();
@@ -1156,34 +1273,56 @@
             showNotification('✅ Reminder added');
         };
 
+        const undoReminder = (reminderJson, index) => {
+            const reminder = JSON.parse(reminderJson);
+            appState.reminders.splice(index, 0, reminder);
+            appState.tasks.push({ ...reminder, description: 'Custom reminder', id: generateId() });
+            appState.reminders.sort((a, b) => a.time.localeCompare(b.time));
+            appState.tasks.sort((a, b) => a.time.localeCompare(b.time));
+            displayReminders();
+            displayTasks();
+            updateDisplays();
+            saveState();
+            showNotification('✅ Reminder restored');
+        };
+
         const displayReminders = () => {
             const remindersList = document.getElementById('remindersList');
-            remindersList.innerHTML = appState.reminders.length ? '' : '<p style="color: var(--text-secondary); font-style: italic;">Add reminders to get started! 📅</p>';
-
+            if (appState.reminders.length === 0) {
+                remindersList.innerHTML = '<p style="color: var(--text-secondary); font-style: italic;">Add reminders to get started! 📅</p>';
+                return;
+            }
             appState.reminders.forEach((reminder, index) => {
-                const div = document.createElement('div');
-                div.className = `reminder-item ${reminder.completed ? 'completed' : ''}`;
-                const isStudy = reminder.type === 'study';
-                const isExercise = reminder.type === 'exercise';
-                const isHobby = reminder.type === 'hobby';
-                div.innerHTML = `
-                    <div>
-                        <div class="reminder-time">${reminder.time}</div>
-                        <div>${reminder.message}${(isStudy || isExercise || isHobby) && reminder.duration ? ` (${reminder.duration} min)` : ''}</div>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="checkbox" class="task-checkbox" data-time="${reminder.time}" data-title="${reminder.message}" ${reminder.completed ? 'checked' : ''} aria-label="Mark ${reminder.message} as completed">
-                        <button class="btn btn-primary" data-index="${index}" aria-label="Remove ${reminder.message}">❌</button>
-                    </div>
-                `;
-                remindersList.appendChild(div);
+                const existing = remindersList.querySelector(`[data-id="${reminder.id}"]`);
+                if (existing) {
+                    existing.className = `reminder-item ${reminder.completed ? 'completed' : ''}`;
+                    existing.querySelector('.task-checkbox').checked = reminder.completed;
+                } else {
+                    const div = document.createElement('div');
+                    div.className = `reminder-item ${reminder.completed ? 'completed' : ''}`;
+                    div.dataset.id = reminder.id;
+                    const isStudy = reminder.type === 'study';
+                    const isExercise = reminder.type === 'exercise';
+                    const isHobby = reminder.type === 'hobby';
+                    div.innerHTML = `
+                        <div>
+                            <div class="reminder-time">${reminder.time}</div>
+                            <div>${reminder.message}${(isStudy || isExercise || isHobby) && reminder.duration ? ` (${reminder.duration} min)` : ''}</div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="checkbox" class="task-checkbox" data-id="${reminder.id}" ${reminder.completed ? 'checked' : ''} aria-label="Mark ${reminder.message} as completed">
+                            <button class="btn btn-primary" data-index="${index}" aria-label="Remove ${reminder.message}">❌</button>
+                        </div>
+                    `;
+                    remindersList.appendChild(div);
+                }
             });
-
             remindersList.querySelectorAll('.task-checkbox').forEach(checkbox => {
+                checkbox.removeEventListener('change', handleTaskCompletion);
                 checkbox.addEventListener('change', e => handleTaskCompletion(e, 'reminders'));
             });
-
             remindersList.querySelectorAll('button').forEach(btn => {
+                btn.removeEventListener('click', null);
                 btn.addEventListener('click', () => {
                     const index = parseInt(btn.dataset.index);
                     const reminder = appState.reminders[index];
@@ -1194,40 +1333,52 @@
                             appState.stats.studyTime = Math.max(0, appState.stats.studyTime - (reminder.duration || 45) / 60);
                         }
                     }
-                    appState.tasks = appState.tasks.filter(t => !(t.time === reminder.time && t.title === reminder.message));
+                    appState.tasks = appState.tasks.filter(t => t.id !== reminder.id);
                     appState.reminders.splice(index, 1);
                     displayReminders();
                     displayTasks();
                     updateDisplays();
+                    showNotification(`🗑️ Reminder removed. <button onclick="undoReminder('${JSON.stringify(reminder)}', ${index})">Undo</button>`);
                     saveState();
-                    showNotification('🗑️ Reminder removed');
                 });
+            });
+            remindersList.querySelectorAll('.reminder-item').forEach(el => {
+                if (!appState.reminders.some(r => r.id === el.dataset.id)) el.remove();
             });
         };
 
         // Progress
         const displayCompletedTasks = () => {
             const completedTasksList = document.getElementById('completedTasksList');
-            completedTasksList.innerHTML = appState.completedTasks.length ? '' : '<p style="color: var(--text-secondary); font-style: italic;">No tasks completed yet! 📅</p>';
-
+            if (appState.completedTasks.length === 0) {
+                completedTasksList.innerHTML = '<p style="color: var(--text-secondary); font-style: italic;">No tasks completed yet! 📅</p>';
+                return;
+            }
             appState.completedTasks.forEach(task => {
-                const div = document.createElement('div');
-                div.className = 'timeline-item completed';
-                const isStudy = task.type === 'study';
-                const isExercise = task.type === 'exercise';
-                const isHobby = task.type === 'hobby';
-                const isBreak = task.type === 'break';
-                const isFree = task.type === 'free';
-                const isLunch = task.type === 'lunch';
-                div.innerHTML = `
-                    <span class="timeline-time">${task.time}</span>
-                    <div class="timeline-content">
-                        <div class="timeline-title">${task.title}</div>
-                        <div>${task.description}${(isStudy || isExercise || isHobby || isBreak || isFree || isLunch) && task.duration ? ` (${task.duration} min)` : ''} (Completed: ${new Date(task.completedAt).toLocaleDateString()})</div>
-                    </div>
-                    <span class="timeline-emoji">${task.emoji}</span>
-                `;
-                completedTasksList.appendChild(div);
+                const existing = completedTasksList.querySelector(`[data-id="${task.id}"]`);
+                if (!existing) {
+                    const div = document.createElement('div');
+                    div.className = 'timeline-item completed';
+                    div.dataset.id = task.id;
+                    const isStudy = task.type === 'study';
+                    const isExercise = task.type === 'exercise';
+                    const isHobby = task.type === 'hobby';
+                    const isBreak = task.type === 'break';
+                    const isFree = task.type === 'free';
+                    const isLunch = task.type === 'lunch';
+                    div.innerHTML = `
+                        <span class="timeline-time">${task.time}</span>
+                        <div class="timeline-content">
+                            <div class="timeline-title">${task.title}</div>
+                            <div>${task.description}${(isStudy || isExercise || isHobby || isBreak || isFree || isLunch) && task.duration ? ` (${task.duration} min)` : ''} (Completed: ${new Date(task.completedAt).toLocaleDateString()})</div>
+                        </div>
+                        <span class="timeline-emoji">${task.emoji}</span>
+                    `;
+                    completedTasksList.appendChild(div);
+                }
+            });
+            completedTasksList.querySelectorAll('.timeline-item').forEach(el => {
+                if (!appState.completedTasks.some(t => t.id === el.dataset.id)) el.remove();
             });
         };
 
@@ -1251,29 +1402,35 @@
 
         const displayHobbies = () => {
             const hobbiesList = document.getElementById('hobbiesList');
-            hobbiesList.innerHTML = appState.user.hobbies.length ? '' : '<p style="color: var(--text-secondary); font-style: italic;">No hobbies added yet! 🎨</p>';
-
-            if (appState.user.hobbies.length) {
-                const ul = document.createElement('ul');
-                ul.style.listStyle = 'none';
-                ul.style.padding = '0';
-                appState.hobbies.forEach(hobby => {
-                    const li = document.createElement('li');
-                    li.style.marginBottom = '10px';
-                    li.innerHTML = `<span style="font-size: 1.5rem; margin-right: 10px;">🎨</span> ${hobby}`;
-                    ul.appendChild(li);
-                });
-                hobbiesList.appendChild(ul);
+            if (appState.user.hobbies.length === 0) {
+                hobbiesList.innerHTML = '<p style="color: var(--text-secondary); font-style: italic;">No hobbies added yet! 🎨</p>';
+                return;
             }
+            const ul = document.createElement('ul');
+            ul.style.listStyle = 'none';
+            ul.style.padding = '0';
+            appState.user.hobbies.forEach(hobby => {
+                const li = document.createElement('li');
+                li.style.marginBottom = '10px';
+                li.innerHTML = `<span style="font-size: 1.5rem; margin-right: 10px;">🎨</span> ${sanitizeHTML(hobby)}`;
+                ul.appendChild(li);
+            });
+            hobbiesList.innerHTML = '';
+            hobbiesList.appendChild(ul);
         };
 
         // Level and streak
         const updateStreak = () => {
             const today = new Date().toDateString();
+            const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toDateString();
             if (appState.stats.lastReviewDate !== today && appState.stats.tasksCompletedToday > 0) {
-                appState.user.streak++;
+                if (appState.stats.lastReviewDate !== yesterday && appState.stats.lastReviewDate) {
+                    appState.user.streak = 1;
+                } else {
+                    appState.user.streak++;
+                }
                 appState.stats.lastReviewDate = today;
-                showNotification(`🔥 Streak increased to ${appState.user.streak}`);
+                showNotification(`🔥 Streak updated to ${appState.user.streak}`);
                 saveState();
             }
         };
@@ -1289,11 +1446,11 @@
 
         // Display updates
         const updateDisplays = () => {
-            document.getElementById('welcomeText').textContent = `Welcome back, ${appState.user.name}! 🌟`;
+            document.getElementById('welcomeText').textContent = `Welcome back, ${sanitizeHTML(appState.user.name)}! 🌟`;
             document.getElementById('userLevel').textContent = appState.user.level;
             document.getElementById('userXP').textContent = appState.user.xp;
             document.getElementById('userAvatar').textContent = appState.user.avatar;
-            document.getElementById('profileName').textContent = appState.user.name;
+            document.getElementById('profileName').textContent = sanitizeHTML(appState.user.name);
             document.getElementById('profileLevel').textContent = appState.user.level;
             document.getElementById('profileXP').textContent = appState.user.xp;
             document.getElementById('profileAvatar').textContent = appState.user.avatar;
@@ -1304,7 +1461,6 @@
             document.getElementById('totalTasks').textContent = appState.completedTasks.length;
             document.body.setAttribute('data-theme', appState.user.theme);
             elements.themeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.theme === appState.user.theme));
-
             updateTodaysSummary();
             displaySchedule();
             displayTasks();
@@ -1321,7 +1477,7 @@
                         <span class="timeline-time">--:--</span>
                         <div class="timeline-content">
                             <div class="timeline-title">No schedule created yet</div>
-                            <div>Create your first schedule to get started! 🚗</div>
+                            <div>Create your first schedule to get started! 🚀</div>
                         </div>
                         <span class="timeline-emoji">📅</span>
                     </div>`;
@@ -1370,8 +1526,11 @@
         // Notification with debounce
         let notificationTimeout = null;
         const showNotification = message => {
-            if (notificationTimeout) clearTimeout(notificationTimeout);
-            elements.notification.textContent = message;
+            if (notificationTimeout) {
+                clearTimeout(notificationTimeout);
+                elements.notification.classList.remove('show');
+            }
+            elements.notification.innerHTML = sanitizeHTML(message);
             elements.notification.classList.add('show');
             notificationTimeout = setTimeout(() => {
                 elements.notification.classList.remove('show');
@@ -1379,11 +1538,22 @@
             }, 3000);
         };
 
+        // Reminder notifications
+        const checkReminders = () => {
+            const now = new Date();
+            const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            appState.reminders.forEach(reminder => {
+                if (reminder.time === currentTime && !reminder.completed) {
+                    showNotification(`🔔 Reminder: ${sanitizeHTML(reminder.message)}`);
+                }
+            });
+        };
+
         // Initialize
         const init = () => {
             loadState();
             checkDailyReset();
-            // Quiz setup
+            setInterval(checkReminders, 60000);
             const steps = document.querySelectorAll('.quiz-step');
             const progressBar = document.getElementById('quizProgress');
             steps.forEach((_, i) => {
@@ -1399,6 +1569,13 @@
                     group.querySelectorAll('.radio-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     quizData[btn.parentElement.parentElement.dataset.step === '2' ? 'timePreference' : 'studyIntensity'] = btn.dataset.value;
+                    saveState();
+                });
+                btn.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        btn.click();
+                    }
                 });
             });
 
@@ -1406,11 +1583,13 @@
                 if (currentQuizStep > 1) {
                     currentQuizStep--;
                     updateQuizProgress();
+                    saveState();
                 }
             });
 
             elements.quizNext.addEventListener('click', () => {
                 if (validateQuizStep() && currentQuizStep < 12) {
+                    collectQuizData();
                     currentQuizStep++;
                     updateQuizProgress();
                 }
@@ -1422,14 +1601,41 @@
                 }
             });
 
-            elements.navBtns.forEach(btn => btn.addEventListener('click', () => showPage(btn.dataset.page)));
-            elements.themeBtns.forEach(btn => btn.addEventListener('click', () => setTheme(btn.dataset.theme)));
+            elements.navBtns.forEach(btn => {
+                btn.addEventListener('click', () => showPage(btn.dataset.page));
+                btn.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        showPage(btn.dataset.page);
+                    }
+                });
+            });
+
+            elements.themeBtns.forEach(btn => {
+                btn.addEventListener('click', () => setTheme(btn.dataset.theme));
+                btn.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setTheme(btn.dataset.theme);
+                    }
+                });
+            });
+
             elements.saveScheduleBtn.addEventListener('click', saveSchedule);
+            elements.editScheduleBtn.addEventListener('click', editSchedule);
             elements.addReminderBtn.addEventListener('click', addReminder);
-            elements.avatarBtns.forEach(btn => btn.addEventListener('click', () => changeAvatar(btn.dataset.avatar)));
+            elements.avatarBtns.forEach(btn => {
+                btn.addEventListener('click', () => changeAvatar(btn.dataset.avatar));
+                btn.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        changeAvatar(btn.dataset.avatar);
+                    }
+                });
+            });
             elements.createScheduleBtn.addEventListener('click', () => showPage('scheduler'));
             elements.saveHobbiesBtn.addEventListener('click', saveHobbies);
-            showNotification('👋 Welcome to Wakhty!');
+            showNotification('👋 Welcome to Wakhty! Data is stored locally; avoid sensitive info.');
             updateDisplays();
         };
 
